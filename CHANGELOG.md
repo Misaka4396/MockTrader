@@ -3,6 +3,19 @@
 本项目所有重要变更均记录在此文件中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.3.1] - 2026-08-14
+
+### Added
+
+- **模拟盘报告生成**：`src/core/report/reportGenerator.js`（六章节报告：绩效 / 基准对比 / 交易与成本 / 风控 VaR·压力 / 因子摘要 / 结论免责）+ C# `ReportGenerator.cs` 镜像 + `tools/generate_report.mjs` 一键生成（Markdown + JSON，含数据版本指纹）。
+- **报告入口**：Web（app.js / template.html / worker.js）与 WPF（MainWindow）均新增报告查看/生成入口。
+- 单元测试 37 → **39 项**（报告章节完整性、JSON 数据完整性）。
+- `docs/14_economic_analysis.md`：策略多学派经济学分析（奥地利 / 新古典 / 行为经济学三视角）。
+
+### Changed
+
+- 版本号 1.3.0 → 1.3.1。
+
 ## [1.3.0] - 2026-08-14
 
 ### Added

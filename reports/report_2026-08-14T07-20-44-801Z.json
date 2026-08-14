@@ -1,0 +1,87 @@
+{
+  "ts": "2026-08-14T07:20:44.800Z",
+  "fingerprint": "c0fa7fdc",
+  "nVarieties": 45,
+  "dateRange": ["2022-01-03", "2024-12-31"],
+  "configLabel": "截面动量+流动性+成交量+价格偏度+展期收益率 · 多5空5 · equal · monthly",
+  "metrics": {
+    "totalReturn": -0.08355964389024229,
+    "annualizedReturn": -0.027762384678146623,
+    "volatility": 0.06210665297063441,
+    "sharpe": -0.4470114448330258,
+    "maxDrawdown": 0.13140248455402942,
+    "calmar": -0.2112774714448525,
+    "winRate": 0.4084507042253521,
+    "nDays": 781
+  },
+  "comparison": {
+    "excess": -0.17776238467814662,
+    "verdict": "跑输",
+    "threshold": 0.02,
+    "strategyAnnual": -0.027762384678146623,
+    "benchmarkAnnual": 0.15
+  },
+  "benchmark": {
+    "annual": 0.15,
+    "name": "纳指100 长线年化",
+    "note": "基准为可配置常数（默认 15%，约 10 年口径）；非逐日曲线，仅代表长线收益率参照。",
+    "finalValue": 1.5421092145454163
+  },
+  "risk": {
+    "var95": 0.006427461806776669,
+    "var99": 0.009562042518943548,
+    "cvar95": 0.008200321232586735,
+    "maxDD": 0.13140248455402942,
+    "stress": {
+      "shock": -0.1,
+      "maxDrawdownBefore": 0.13140248455402942,
+      "maxDrawdownAfter": 0.13140248455402942
+    }
+  },
+  "factorRows": [
+    {
+      "key": "momentum",
+      "name": "截面动量",
+      "spread": -0.0012262702503492043,
+      "ic5d": -0.01245025035610777,
+      "turnover": 0.12647503782148337
+    },
+    {
+      "key": "liquidity",
+      "name": "流动性",
+      "spread": -0.0006530209784767825,
+      "ic5d": -0.008697652630700674,
+      "turnover": 0.045729303547963146
+    },
+    {
+      "key": "volume",
+      "name": "成交量",
+      "spread": -0.0011694804799683386,
+      "ic5d": -0.011924313078415332,
+      "turnover": 0.8727989487516427
+    },
+    {
+      "key": "skewness",
+      "name": "价格偏度",
+      "spread": -0.0003027976850125357,
+      "ic5d": -0.009994813586723156,
+      "turnover": 0.2144546649145861
+    },
+    {
+      "key": "rollYield",
+      "name": "展期收益率",
+      "spread": 0.0018378643399535957,
+      "ic5d": 0.013443168645016178,
+      "turnover": 0.19692701664532644
+    }
+  ],
+  "summary": {
+    "initialCapital": 10000000,
+    "finalEquity": 9164403.561097577,
+    "totalCost": 179646.321,
+    "totalRollCost": 238162.49300000002,
+    "nTrades": 450,
+    "nRolls": 245,
+    "circuitBroken": false
+  }
+}

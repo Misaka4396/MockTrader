@@ -2,11 +2,11 @@
 
 **English** | [简体中文](README.zh.md)
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D18-339933.svg)](package.json)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](cs/)
-[![Test](https://img.shields.io/badge/test-37%20passed-brightgreen.svg)](test/)
+[![Test](https://img.shields.io/badge/test-39%20passed-brightgreen.svg)](test/)
 [![CI](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml/badge.svg)](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml)
 
 MockTrader is an open-source **commodity-futures long-short factor backtesting system** for the Chinese market — multi-contract **roll yields** + a **long-short portfolio** (Option B), benchmarked against Nasdaq long-term returns (single-value baseline).
@@ -16,6 +16,8 @@ It ships **three artifacts**: a portable **JS core**, a **self-contained Web pro
 **v1.2.0 (Plan A)**: a Python data-collection layer (TQSDK / AkShare quotes, Sina / Jin10 / CLS news), a **news-sentiment factor** (exponential decay × agreement discount, no look-ahead), a **trend predictor** (daily factors + news sentiment → long/short/neutral), 30-minute in-session scheduling, and signal archiving — with live quotes & news displayed in both Web and WPF UIs.
 
 **v1.3.0 (Phases 1-3)**: research credibility (out-of-sample split + **walk-forward**, data fingerprint, multi-source verification, impact-cost model, look-ahead audit), research depth (alphalens-style **factor analysis** pipeline, **portfolio optimization**, **VaR/CVaR risk controls**, drawdown circuit breaker, factor registry), and live-readiness (forward **paper-trading ledger**, DingTalk/WeCom alerts, scheduler monitoring, CTP paper-trading skeleton) — all mirrored in JS + C#.
+
+**v1.3.1**: **simulation report generator** — one-command Markdown/JSON reports (performance / benchmark / costs / VaR risk / factor summary / disclaimer) with data-fingerprint audit header, exposed in both Web and WPF UIs; plus an economics analysis of the strategy from Austrian / neoclassical / behavioral perspectives ([docs/14](docs/14_economic_analysis.md)).
 
 > ⚠️ The backtest core defaults to deterministically seeded **synthetic data for algorithm validation only**. Real quotes/news are collected by `py/` scripts; news timestamps do not overlap the backtest window, so news alpha must be validated forward (paper-trading) before use.
 
@@ -36,18 +38,20 @@ It ships **three artifacts**: a portable **JS core**, a **self-contained Web pro
 | **S12 Research** | alphalens-style factor analysis (quantile returns / IC decay / turnover / correlation matrix / Gram-Schmidt orthogonalization), factor registry, out-of-sample split + walk-forward + parameter robustness grid, data fingerprint, look-ahead audit |
 | **S13 Risk** | historical VaR / CVaR / max drawdown / stress test, inverse-vol & ERC portfolio weighting with sector exposure caps, drawdown circuit breaker (optional, default off) |
 | **S14 Live-readiness** | forward paper-trading ledger (record → settle → hit-rate stats), DingTalk/WeCom alerts, scheduler heartbeat & data-freshness monitoring, CTP paper-trading skeleton |
+| **S15 Reporting** | one-command simulation report generator (Markdown + JSON): performance / benchmark / costs / VaR risk / factor summary / disclaimer, with data-fingerprint audit header; exposed in Web & WPF; mirrored in C# (`ReportGenerator.cs`) |
 
 ## Run
 
 ### Web prototype (no dependencies)
 
 ```sh
-npm test                  # 37 unit tests (S1-S5 + news/trend + research/risk/portfolio/paper)
+npm test                  # 39 unit tests (S1-S5 + news/trend + research/risk/portfolio/paper + report)
 npm run lint              # ESLint quality check
 npm run format            # Prettier formatting
 npm run build:web         # bundle dist/index.html
 # double-click dist/index.html to run (offline self-contained)
 node tools/smoke.mjs      # verify bundle == source + worker + HTML
+node tools/generate_report.mjs   # generate simulation report -> reports/report_*.md + .json
 ```
 
 ### Real data pipeline (v1.2.0, on a real machine)
@@ -96,7 +100,7 @@ release\MockTrader.exe
 
 ## Verification
 
-- **37/37 unit tests pass** (zero-dependency runner: S1-S5 + 7 news/trend + 9 research/risk/portfolio/paper/circuit-breaker cases).
+- **39/39 unit tests pass** (zero-dependency runner: S1-S5 + 7 news/trend + 9 research/risk/portfolio/paper/circuit-breaker + 2 report cases).
 - Default run (2022-01-03 ~ 2024-12-31): **45 varieties · 782 trading days · 450 trades · 245 rolls · final equity 9,164,404 · annualized -2.78% · verdict "underperform"** vs the 15% benchmark (excess -17.78pp).
 - News-factor rolling backtest (synthetic injected signal, framework check): **IC 59.79% · alpha +6.08pp · 8/9 windows beat baseline**; real mode correctly warns that news timestamps (2026-08+) do not overlap the backtest window (IC 0.00%).
 - Walk-forward (synthetic data, framework check): 4/5 windows positive OOS Sharpe; look-ahead audit PASS; impact cost adds ~80k to costs at 0.1 coefficient; paper ledger 3942 predictions with ~48.8% hit rate (coin-flip on synthetic data, as expected).

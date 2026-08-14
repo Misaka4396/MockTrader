@@ -16,6 +16,7 @@ namespace MockTrader
     {
         private readonly List<CheckBox> varietyBoxes = new List<CheckBox>();
         private PerformanceResult lastPerf;
+        private PipelineResult lastResult;
         private static readonly Brush Cyan = new SolidColorBrush(Color.FromRgb(14, 116, 144));
         private static readonly Brush Orange = new SolidColorBrush(Color.FromRgb(217, 119, 6));
         private static readonly Brush Good = new SolidColorBrush(Color.FromRgb(5, 150, 105));
@@ -159,6 +160,7 @@ namespace MockTrader
             try
             {
                 var result = await Task.Run(() => Pipeline.Run(o));
+                lastResult = result;
                 ShowResult(result);
                 StatusText.Text = "完成";
             }
@@ -171,6 +173,21 @@ namespace MockTrader
             {
                 RunButton.IsEnabled = true;
             }
+        }
+
+        void ReportButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (lastResult == null)
+            {
+                MessageBox.Show("请先运行回测。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var md = ReportGenerator.BuildMarkdown(lastResult);
+            var dir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "reports");
+            System.IO.Directory.CreateDirectory(dir);
+            var path = System.IO.Path.Combine(dir, "report_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".md");
+            System.IO.File.WriteAllText(path, md, System.Text.Encoding.UTF8);
+            StatusText.Text = "报告已保存: " + path;
         }
 
         void ShowResult(PipelineResult r)

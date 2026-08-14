@@ -103,6 +103,7 @@ import {
   stressTest,
 } from './risk/risk.js';
 import { inverseVolWeights, riskParityWeights, capSectorExposure } from './portfolio/optimizer.js';
+import { generateReport, computeReportExtras } from './report/reportGenerator.js';
 
 /** 一键端到端流水线（数据 -> 因子 -> 策略 -> 回测 -> 绩效），供 GUI/Worker 调用。 */
 function runPipeline(options = {}) {
@@ -140,7 +141,11 @@ function runPipeline(options = {}) {
   const perf = new PerformanceEngine().compute(bt.equity, bt.dates, perfConfig);
 
   report('完成', 1.0);
-  return { ds, panel, strategy: strat, backtest: bt, performance: perf };
+  const reportObj = generateReport(
+    { ds, panel, strategy: strat, backtest: bt, performance: perf },
+    options.reportOptions
+  );
+  return { ds, panel, strategy: strat, backtest: bt, performance: perf, report: reportObj };
 }
 
 export {
@@ -200,6 +205,8 @@ export {
   inverseVolWeights,
   riskParityWeights,
   capSectorExposure,
+  generateReport,
+  computeReportExtras,
   SECTORS,
   FACTOR_KEYS,
   FACTOR_NAMES,

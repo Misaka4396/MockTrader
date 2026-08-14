@@ -83,6 +83,8 @@
       <StackPanel Orientation="Horizontal">
         <Button x:Name="RunButton" Content="▶ 运行回测" Click="RunButton_Click" Padding="18,9" FontSize="15" FontWeight="Bold"
                 Background="#0E7490" Foreground="#FFFFFF" BorderThickness="0" Cursor="Hand"/>
+        <Button x:Name="ReportButton" Content="📄 保存报告" Click="ReportButton_Click" Padding="14,9" Margin="8,0,0,0"
+                Background="#FFFFFF" Foreground="#0E7490" BorderBrush="#D1D5DB" Cursor="Hand"/>
         <TextBlock x:Name="StatusText" Text="就绪" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="#6B7280"/>
       </StackPanel>
       <ProgressBar x:Name="ProgressBar" Grid.Row="0" Margin="0,10,0,0" Height="8" VerticalAlignment="Bottom" Minimum="0" Maximum="100" Value="0"

@@ -5,6 +5,7 @@
   const WORKER_SOURCE = __WORKER_SOURCE__;
   let chart = null;
   let worker = null;
+  let reportMarkdown = '';
 
   function $(id) {
     return document.getElementById(id);
@@ -214,6 +215,25 @@
     $('benchToggle').checked = true;
     $('ddToggle').checked = false;
     chart.setVisible('策略净值', true);
+
+    reportMarkdown = result.report || '';
+    if (reportMarkdown) {
+      $('reportBtn').style.display = 'inline-block';
+    }
+  }
+
+  function downloadReport() {
+    if (!reportMarkdown) {
+      return;
+    }
+    const blob = new Blob([reportMarkdown], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mocktrader_report.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
   }
 
   function setKpi(id, value, isPct, isWin) {
@@ -279,6 +299,7 @@
     chart = new LineChart($('chart'));
 
     $('runBtn').onclick = run;
+    $('reportBtn').onclick = downloadReport;
     $('selectAll').onclick = function () {
       document.querySelectorAll('.variety-cb').forEach(function (cb) {
         cb.checked = true;

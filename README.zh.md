@@ -2,11 +2,11 @@
 
 [English](README.md) | **简体中文**
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D18-339933.svg)](package.json)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](cs/)
-[![Test](https://img.shields.io/badge/test-37%20passed-brightgreen.svg)](test/)
+[![Test](https://img.shields.io/badge/test-39%20passed-brightgreen.svg)](test/)
 [![CI](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml/badge.svg)](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml)
 
 中国商品期货 **多合约 + 展期收益率 + 多空组合** 因子回测系统（方案 B），对比纳指长线收益率（单值基准）。
@@ -20,6 +20,8 @@ C# 每个 dll 职责与 JS 模块一一对应，同一确定性种子下**逐位
 **v1.3.0（Phase 1-3）**：研究可信度（**样本外分割 + Walk-forward**、数据版本指纹、多源交叉校验、冲击成本模型、前视审计）、
 研究深度（alphalens 式**因子分析流水线**、**组合优化**、**VaR/CVaR 风控**、回撤熔断、因子注册表）、
 实盘准备（前向**纸面验证账本**、钉钉/企微告警、调度监控、CTP 模拟盘骨架）——JS 与 C# 双实现镜像同步。
+
+**v1.3.1（报告生成）**：一键生成**模拟盘报告**（Markdown + JSON，六章节：绩效 / 基准对比 / 交易与成本 / 风控 VaR·压力 / 因子摘要 / 结论免责，含数据版本指纹审计头），Web 与 WPF 均提供报告入口；另附策略多学派经济学分析（奥地利 / 新古典 / 行为经济学，docs/14）。
 
 > ⚠️ 回测核心默认使用确定性种子合成的模拟行情，**不代表真实收益**，仅用于验证算法正确性；
 > 真实行情/新闻由 `py/` 脚本采集，新闻时间戳与回测区间不重叠，新闻增量 alpha 需前向纸面验证后再使用。
@@ -52,16 +54,18 @@ C# 每个 dll 职责与 JS 模块一一对应，同一确定性种子下**逐位
 | 🔬 研究平台 S12 | alphalens 式因子分析（分层收益/IC 衰减/换手/相关性矩阵/Gram-Schmidt 正交化）、因子注册表、样本外分割 + Walk-forward + 参数稳健性网格、数据指纹、前视审计 |
 | 🛡️ 风控 S13 | 历史 VaR/CVaR/最大回撤/压力测试；逆波动率 & 等风险贡献组合加权 + 板块暴露上限；回撤熔断（可选，默认关闭） |
 | 🚀 实盘准备 S14 | 前向纸面验证账本（记录→结算→命中率统计）、钉钉/企微告警、调度心跳与数据新鲜度监控、CTP 模拟盘骨架 |
+| 📋 报告生成 S15 | 一键模拟盘报告（Markdown+JSON）：绩效/基准/成本/VaR 风控/因子摘要/结论免责，含数据版本指纹审计头；Web 与 WPF 双端入口；C# `ReportGenerator.cs` 镜像 |
 
 ## 快速开始
 
 ```bash
-npm test                       # 37 项单元测试（S1-S5 + 新闻/趋势 + 研究/风控/组合/纸面）
+npm test                       # 39 项单元测试（S1-S5 + 新闻/趋势 + 研究/风控/组合/纸面 + 报告）
 npm run lint                   # ESLint 质量检查
 npm run format                 # Prettier 格式化
 npm run build:web              # 打包为 dist/index.html
 # 双击 dist/index.html 即可运行（离线自包含，后台线程 + 进度条不卡 UI）
 node tools/smoke.mjs           # 验证打包核心与源码结果一致 + worker + HTML
+node tools/generate_report.mjs # 生成模拟盘报告 -> reports/report_*.md + .json
 ```
 
 ## 真实数据流水线（v1.2.0）

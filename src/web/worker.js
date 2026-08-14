@@ -18,6 +18,7 @@
         finalEquity: result.backtest.summary.finalEquity,
         initialCapital: result.backtest.summary.initialCapital,
       },
+      report: result.report ? result.report.markdown : '',
     };
   }
 
