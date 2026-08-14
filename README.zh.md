@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D18-339933.svg)](package.json)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](cs/)
