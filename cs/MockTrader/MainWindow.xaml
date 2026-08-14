@@ -55,6 +55,17 @@
             <TextBox x:Name="BenchmarkBox" Grid.Row="8" Grid.Column="1" Text="0.15" Background="#FFFFFF" Foreground="#111827" BorderBrush="#D1D5DB" VerticalContentAlignment="Center"/>
           </Grid>
           <TextBlock Text="基准为可配置常数（默认 15%，约 10 年口径），非纳指逐日曲线。CTA 与纳指低相关，此基准用于「是否值得主动交易」的决策参照。" TextWrapping="Wrap" Foreground="#6B7280" FontSize="11" Margin="0,10,0,0"/>
+          <TextBlock Text="新闻情绪（30 分钟级 · 演示）" Foreground="#111827" FontSize="12" FontWeight="Bold" Margin="0,16,0,6"/>
+          <Border Background="#F9FAFB" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="8">
+            <StackPanel>
+              <TextBlock Text="▲ 看多" Foreground="#059669" FontSize="11" FontWeight="Bold"/>
+              <TextBlock x:Name="NewsBullish" Text="—" Foreground="#111827" FontSize="12" Margin="0,2,0,8" TextWrapping="Wrap"/>
+              <TextBlock Text="▼ 看空" Foreground="#DC2626" FontSize="11" FontWeight="Bold"/>
+              <TextBlock x:Name="NewsBearish" Text="—" Foreground="#111827" FontSize="12" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+          <TextBlock x:Name="NewsStatus" Text="—" Foreground="#6B7280" FontSize="10" Margin="0,6,0,0" TextWrapping="Wrap"/>
+          <TextBlock Text="新闻情绪因子 = 近 4 小时情绪（指数衰减加权）× 一致性折减；真实数据由 py/scheduler.py 每 30 分钟抓取。" TextWrapping="Wrap" Foreground="#6B7280" FontSize="10" Margin="0,6,0,0"/>
         </StackPanel>
       </ScrollViewer>
     </Border>

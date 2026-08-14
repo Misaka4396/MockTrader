@@ -144,6 +144,15 @@ export class DataAccess {
     };
   }
 
+  /** 从真实行情数据加载（方案 A）：{ dates, dataset }，dataset = { code: { contracts: { code: [bar] } } } */
+  loadMarketData(data) {
+    this.dates = data.dates || [];
+    this.dataset = data.dataset || {};
+    this.series = {};
+    if (!this.config) {this.config = { source: 'market-data' };}
+    return this;
+  }
+
   /** 从快照恢复（快照含 dataset 与 series） */
   importSnapshot(snapshot) {
     this.dates = snapshot.dates || [];

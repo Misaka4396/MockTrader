@@ -30,6 +30,26 @@ namespace MockTrader
             BuildVarietyPicker();
             InitCombos();
             ChartCanvas.SizeChanged += (s, e) => { if (lastPerf != null) DrawChart(lastPerf); };
+            RenderNewsSentiment();
+        }
+
+        void RenderNewsSentiment()
+        {
+            var codes = Metadata.All.Select((v) => v.Code).ToList();
+            var items = NewsSentiment.GenerateMockNews(codes, Rng.StringSeed("wpf-mock-news"), DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            var nowTs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var scored = new List<(string Code, double Factor)>();
+            foreach (var code in codes)
+            {
+                var f = NewsSentiment.SentimentFactor(items, code, nowTs) ?? 0;
+                scored.Add((code, f));
+            }
+            scored.Sort((a, b) => b.Factor.CompareTo(a.Factor));
+            var bull = scored.Take(5).Select((s) => s.Code + " " + s.Factor.ToString("+0.00;-0.00"));
+            var bear = scored.Skip(Math.Max(0, scored.Count - 5)).Reverse().Select((s) => s.Code + " " + s.Factor.ToString("+0.00;-0.00"));
+            NewsBullish.Text = string.Join("   ", bull);
+            NewsBearish.Text = string.Join("   ", bear);
+            NewsStatus.Text = "数据源: 演示(模拟) · " + items.Count + " 条新闻 · 更新时间 " + DateTime.Now.ToString("HH:mm:ss");
         }
 
         void InitCombos()

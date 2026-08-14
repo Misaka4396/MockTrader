@@ -18,11 +18,15 @@ __def("index", function(__req, __exports) {
   const { PerformanceEngine, DEFAULT_BENCHMARK, DEFAULT_PERF_CONFIG } = __req("performance/performanceEngine");
   const { SECTORS, FACTOR_KEYS, FACTOR_NAMES, DIRECTION, EXCHANGES } = __req("types");
   const { stringSeed, mulberry32, rngFromString, randn, parseISO, fmtISO, addDays, diffDays, isWeekday, tradingDates, inRange, sum, mean, variance, std, percentile, median, zscore, rank, pearson, spearman, winsorize, rollingMean, rollingStd, last, clamp, roundTo, deepClone, meanOfMap } = __req("utils");
+  const { NewsSentimentEngine, sentimentFactor, parseTs, labelToScore, dailySentimentByDate, generateMockNews, DEFAULT_LEAN } = __req("factors/newsSentiment");
+  const { TrendPredictor } = __req("trend/trendPredictor");
 /**
  * index.js — 公共 API 桶 (portable core 入口)。
  * 对应 C# 架构：DataAccess.dll / FactorEngine / StrategyEngine / BacktestEngine / PerformanceEngine。
  * 约定：仅命名导出（末尾单条 export { ... }），无 export *，便于打包器处理。
  */
+
+
 
 
 
@@ -76,7 +80,7 @@ function runPipeline(options = {}) {
 
 
 
-  Object.assign(__exports, { DataAccess, parseContractCode, METADATA, METADATA_BY_CODE, getMeta, BY_SECTOR, generateVariety, SECTOR_SIM_DEFAULT, SIM_OVERRIDES, simParams, contractCode, deliveryISO, continuousSeries, buildMainSub, backAdjustFactors, maxAbsReturn, FactorEngine, DEFAULT_FACTOR_PARAMS, FACTOR_SIGNS, skewness, computeVarietyFactors, crossSectionalZ, StrategyEngine, DEFAULT_STRATEGY_CONFIG, compositeScores, factorWeights, computeRollingIC, BacktestEngine, DEFAULT_BACKTEST_CONFIG, PerformanceEngine, DEFAULT_BENCHMARK, DEFAULT_PERF_CONFIG, SECTORS, FACTOR_KEYS, FACTOR_NAMES, DIRECTION, EXCHANGES, stringSeed, mulberry32, rngFromString, randn, parseISO, fmtISO, addDays, diffDays, isWeekday, tradingDates, inRange, sum, mean, variance, std, percentile, median, zscore, rank, pearson, spearman, winsorize, rollingMean, rollingStd, last, clamp, roundTo, deepClone, meanOfMap, runPipeline });
+  Object.assign(__exports, { DataAccess, parseContractCode, METADATA, METADATA_BY_CODE, getMeta, BY_SECTOR, generateVariety, SECTOR_SIM_DEFAULT, SIM_OVERRIDES, simParams, contractCode, deliveryISO, continuousSeries, buildMainSub, backAdjustFactors, maxAbsReturn, FactorEngine, DEFAULT_FACTOR_PARAMS, FACTOR_SIGNS, skewness, computeVarietyFactors, crossSectionalZ, StrategyEngine, DEFAULT_STRATEGY_CONFIG, compositeScores, factorWeights, computeRollingIC, BacktestEngine, DEFAULT_BACKTEST_CONFIG, PerformanceEngine, DEFAULT_BENCHMARK, DEFAULT_PERF_CONFIG, NewsSentimentEngine, sentimentFactor, parseTs, labelToScore, dailySentimentByDate, generateMockNews, DEFAULT_LEAN, TrendPredictor, SECTORS, FACTOR_KEYS, FACTOR_NAMES, DIRECTION, EXCHANGES, stringSeed, mulberry32, rngFromString, randn, parseISO, fmtISO, addDays, diffDays, isWeekday, tradingDates, inRange, sum, mean, variance, std, percentile, median, zscore, rank, pearson, spearman, winsorize, rollingMean, rollingStd, last, clamp, roundTo, deepClone, meanOfMap, runPipeline });
 });
 __def("data/dataAccess", function(__req, __exports) {
   const { METADATA, METADATA_BY_CODE } = __req("data/metadata");
@@ -227,6 +231,15 @@ class DataAccess {
       dataset: this.dataset,
       series,
     };
+  }
+
+  /** 从真实行情数据加载（方案 A）：{ dates, dataset }，dataset = { code: { contracts: { code: [bar] } } } */
+  loadMarketData(data) {
+    this.dates = data.dates || [];
+    this.dataset = data.dataset || {};
+    this.series = {};
+    if (!this.config) {this.config = { source: 'market-data' };}
+    return this;
   }
 
   /** 从快照恢复（快照含 dataset 与 series） */
@@ -2085,6 +2098,246 @@ const DIRECTION = {
 const EXCHANGES = ['SHFE', 'DCE', 'CZCE', 'INE', 'GFEX'];
 
   Object.assign(__exports, { SECTORS, FACTOR_KEYS, FACTOR_NAMES, DIRECTION, EXCHANGES });
+});
+__def("factors/newsSentiment", function(__req, __exports) {
+  const { rngFromString } = __req("utils");
+/**
+ * newsSentiment.js — 新闻情绪因子引擎（方案 A 新增，S2 的第 6 个因子）。
+ * 纯函数、无未来函数：只用 ts <= now 的新闻，指数衰减加权，带「一致性」置信度。
+ *
+ * 新闻记录 schema（由 Python 采集/打标层产出，见 docs/10）：
+ *   { ts: "2026-08-14T09:35:00+08:00" | epochMs, source, title, content,
+ *     tags: ["RB", ...], sentiment: -1..1, label: "bullish"|"bearish"|"neutral" }
+ *
+ * 因子公式（品种 c 在时刻 now，回看 lookbackHours）：
+ *   weight_i = exp(-lambda * hours(ts_i, now))
+ *   score    = Σ(sentiment_i * weight_i) / Σ(weight_i)          # 情绪加权均值
+ *   agreement= max(bull,bear,neutral) / n                       # 一致性
+ *   factor   = score * (0.5 + 0.5 * agreement)                  # 一致性折减
+ */
+
+
+
+/** 解析时间戳：number 视为 epoch ms，字符串用 Date.parse */
+function parseTs(x) {
+  if (typeof x === 'number') {
+    return x;
+  }
+  return Date.parse(x);
+}
+
+function hoursBetween(tsA, tsB) {
+  return (tsB - tsA) / 3600000;
+}
+
+function labelToScore(label) {
+  if (label === 'bullish') {
+    return 1;
+  }
+  if (label === 'bearish') {
+    return -1;
+  }
+  return 0;
+}
+
+/** 单品种在某时刻的情绪统计 */
+function sentimentFactor(items, code, nowTs, opts = {}) {
+  const lookbackH = opts.lookbackHours != null ? opts.lookbackHours : 4;
+  const lambda = opts.decayLambda != null ? opts.decayLambda : 0.05;
+  const lo = nowTs - lookbackH * 3600000;
+  let num = 0;
+  let den = 0;
+  let bull = 0;
+  let bear = 0;
+  let neu = 0;
+  let n = 0;
+  for (const it of items) {
+    const ts = parseTs(it.ts);
+    if (!(ts <= nowTs) || ts < lo) {
+      continue;
+    }
+    if (!it.tags || !it.tags.includes(code)) {
+      continue;
+    }
+    const w = Math.exp(-lambda * Math.max(0, hoursBetween(ts, nowTs)));
+    const s = typeof it.sentiment === 'number' ? it.sentiment : labelToScore(it.label);
+    num += s * w;
+    den += w;
+    n++;
+    if (s > 0.2) {
+      bull++;
+    } else if (s < -0.2) {
+      bear++;
+    } else {
+      neu++;
+    }
+  }
+  if (n === 0) {
+    return null;
+  }
+  const score = den > 0 ? num / den : 0;
+  const agreement = Math.max(bull, bear, neu) / n;
+  return {
+    score,
+    coverage: n,
+    agreement,
+    factor: score * (0.5 + 0.5 * agreement),
+    bull,
+    bear,
+    neutral: neu,
+  };
+}
+
+/**
+ * 逐日情绪聚合（对齐日线面板）：每个交易日取收盘时刻 15:00 作为 now，回看 lookbackHours。
+ * @returns {Object<string, Array<number|null>>} code -> factor 数组（与 dates 对齐）
+ */
+function dailySentimentByDate(items, codes, dates, opts = {}) {
+  const closeTime = opts.closeTime || 'T15:00:00+08:00';
+  const out = {};
+  for (const code of codes) {
+    out[code] = new Array(dates.length).fill(null);
+  }
+  for (let t = 0; t < dates.length; t++) {
+    const nowTs = parseTs(dates[t] + closeTime);
+    for (const code of codes) {
+      const r = sentimentFactor(items, code, nowTs, opts);
+      out[code][t] = r ? r.factor : null;
+    }
+  }
+  return out;
+}
+
+class NewsSentimentEngine {
+  /**
+   * 计算每个品种在每条时间戳上的情绪因子。
+   * @param {Array} items 新闻记录
+   * @param {Array<string>} codes 品种代码
+   * @param {Array} timestamps 时间戳数组（升序，可为 ISO 字符串或 epoch ms）
+   * @returns {Object<string, Array<number|null>>} code -> factor 数组（与 timestamps 对齐）
+   */
+  compute(items, codes, timestamps, opts = {}) {
+    const out = {};
+    for (const code of codes) {
+      out[code] = new Array(timestamps.length).fill(null);
+    }
+    for (let t = 0; t < timestamps.length; t++) {
+      const nowTs = parseTs(timestamps[t]);
+      for (const code of codes) {
+        const r = sentimentFactor(items, code, nowTs, opts);
+        out[code][t] = r ? r.factor : null;
+      }
+    }
+    return out;
+  }
+}
+
+/** 默认品种新闻倾向（演示用） */
+const DEFAULT_LEAN = {
+  RB: 0.5,
+  HC: 0.4,
+  I: 0.4,
+  J: 0.3,
+  CU: 0.4,
+  AL: 0.3,
+  ZN: 0.2,
+  AU: -0.4,
+  AG: -0.3,
+  M: -0.4,
+  C: -0.3,
+  CF: -0.2,
+  SR: -0.3,
+  SC: 0.4,
+  MA: 0.2,
+  TA: -0.2,
+  Y: -0.2,
+  P: -0.2,
+  OI: -0.1,
+  RM: -0.2,
+  FG: -0.2,
+  SA: 0.1,
+  PB: 0.1,
+  NI: 0.2,
+  SN: 0.1,
+  SS: 0.2,
+  BU: 0.1,
+  PP: 0.1,
+  L: 0.1,
+  V: 0.1,
+  EG: 0.1,
+  EB: 0.1,
+  FU: 0.2,
+  RU: 0.1,
+  SF: 0.1,
+  SM: 0.1,
+  AO: 0.2,
+  JM: 0.3,
+  CS: -0.1,
+  AP: -0.2,
+  JD: -0.1,
+};
+
+/** 生成确定性演示新闻（30 分钟间隔），用于 UI/离线验证。 */
+function generateMockNews(codes, opts = {}) {
+  const rng = rngFromString(opts.seed || 'mock-news');
+  const now = opts.nowTs != null ? opts.nowTs : Date.now();
+  const n = opts.nIntervals || 8;
+  const step = opts.intervalMs || 30 * 60000;
+  const lean = opts.lean || DEFAULT_LEAN;
+  const items = [];
+  for (const code of codes) {
+    for (let k = 0; k < n; k++) {
+      if (rng() < 0.5) {
+        continue;
+      }
+      const base = lean[code] || 0;
+      const s = Math.max(-1, Math.min(1, base + (rng() - 0.5) * 0.8));
+      items.push({
+        ts: now - (n - 1 - k) * step,
+        source: 'mock',
+        title: `${code} 快讯`,
+        tags: [code],
+        sentiment: s,
+        label: s > 0.2 ? 'bullish' : s < -0.2 ? 'bearish' : 'neutral',
+      });
+    }
+  }
+  return items;
+}
+
+  Object.assign(__exports, { parseTs, hoursBetween, labelToScore, sentimentFactor, dailySentimentByDate, NewsSentimentEngine, DEFAULT_LEAN, generateMockNews });
+});
+__def("trend/trendPredictor", function(__req, __exports) {
+/**
+ * trendPredictor.js — 趋势预测（方案 A 新增）：日线因子（慢信号）+ 新闻情绪因子（快信号）融合。
+ * 输出每个品种的趋势得分 / 方向 / 强度，用于 30 分钟级趋势预测。
+ */
+
+class TrendPredictor {
+  /**
+   * @param {Object<string, number>} dailyScoreByCode 日线合成得分（已截面标准化，如 composite z）
+   * @param {Object<string, number>} newsZByCode 新闻情绪因子 z 值（当前时刻，截面标准化后）
+   * @param {Object} config { wDaily=1, wNews=0.5, threshold=0.25 }
+   * @returns {Array<{code, score, direction, strength, daily, news}>} 按 score 降序
+   */
+  predict(dailyScoreByCode, newsZByCode, config = {}) {
+    const wDaily = config.wDaily != null ? config.wDaily : 1.0;
+    const wNews = config.wNews != null ? config.wNews : 0.5;
+    const threshold = config.threshold != null ? config.threshold : 0.25;
+    const out = [];
+    for (const code of Object.keys(dailyScoreByCode)) {
+      const d = dailyScoreByCode[code] != null ? dailyScoreByCode[code] : 0;
+      const n = newsZByCode[code] != null ? newsZByCode[code] : 0;
+      const score = wDaily * d + wNews * n;
+      const direction = score > threshold ? 1 : score < -threshold ? -1 : 0;
+      out.push({ code, score, direction, strength: Math.abs(score), daily: d, news: n });
+    }
+    out.sort((a, b) => b.score - a.score);
+    return out;
+  }
+}
+
+  Object.assign(__exports, { TrendPredictor });
 });
   var entry = __req('index');
   if (typeof module !== 'undefined' && module.exports) { module.exports = entry; }

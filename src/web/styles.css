@@ -264,3 +264,49 @@ canvas#chart {
   border-radius: 8px;
   padding: 10px;
 }
+.news-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.news-head {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.news-head.bull {
+  color: var(--good);
+}
+.news-head.bear {
+  color: var(--bad);
+}
+.news-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin: 4px 0;
+}
+.news-item .code {
+  width: 34px;
+  font-weight: 700;
+  color: var(--text);
+}
+.news-item .track {
+  flex: 1;
+  height: 8px;
+  background: var(--panel2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.news-item .fill {
+  height: 100%;
+  border-radius: 4px;
+  display: block;
+}
+.news-item .val {
+  width: 44px;
+  text-align: right;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}

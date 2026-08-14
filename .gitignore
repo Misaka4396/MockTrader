@@ -12,6 +12,11 @@ node_modules/
 test-results/
 playwright-report/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
 # husky 内部目录（hook 文件本身提交）
 .husky/_
 

@@ -154,6 +154,25 @@
           </div>
         </div>
 
+        <div class="card">
+          <h3>新闻情绪（30 分钟级 · 演示数据）</h3>
+          <div class="news-grid">
+            <div>
+              <div class="news-head bull">▲ 看多</div>
+              <div id="newsBullish"></div>
+            </div>
+            <div>
+              <div class="news-head bear">▼ 看空</div>
+              <div id="newsBearish"></div>
+            </div>
+          </div>
+          <p class="note" id="newsStatus">—</p>
+          <p class="note">
+            新闻情绪因子 = 近 4 小时情绪（指数衰减加权）× 一致性折减；真实数据由 py/scheduler.py 每
+            30 分钟抓取。
+          </p>
+        </div>
+
         <div class="card chart-wrap">
           <div class="chart-toolbar">
             <button class="btn ghost active range-btn" data-range="all">全部</button>

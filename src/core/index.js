@@ -68,6 +68,16 @@ import {
   deepClone,
   meanOfMap,
 } from './utils.js';
+import {
+  NewsSentimentEngine,
+  sentimentFactor,
+  parseTs,
+  labelToScore,
+  dailySentimentByDate,
+  generateMockNews,
+  DEFAULT_LEAN,
+} from './factors/newsSentiment.js';
+import { TrendPredictor } from './trend/trendPredictor.js';
 
 /** 一键端到端流水线（数据 -> 因子 -> 策略 -> 回测 -> 绩效），供 GUI/Worker 调用。 */
 function runPipeline(options = {}) {
@@ -141,6 +151,14 @@ export {
   PerformanceEngine,
   DEFAULT_BENCHMARK,
   DEFAULT_PERF_CONFIG,
+  NewsSentimentEngine,
+  sentimentFactor,
+  parseTs,
+  labelToScore,
+  dailySentimentByDate,
+  generateMockNews,
+  DEFAULT_LEAN,
+  TrendPredictor,
   SECTORS,
   FACTOR_KEYS,
   FACTOR_NAMES,

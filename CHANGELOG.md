@@ -3,6 +3,20 @@
 本项目所有重要变更均记录在此文件中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.0] - 2026-08-14
+
+### Added
+
+- **方案 A 实战化**：新闻情绪因子（newsSentiment.js）+ 趋势预测（trendPredictor.js）+ 真实行情加载（loadMarketData）
+- **Python 采集/调度层**：collect_quotes（TQsdk/AkShare）、collect_news（新浪/金十/财联社）、sentiment（词典+LLM 批量打标）、scheduler（盘中 30min）
+- **新闻情绪 UI**：Web 与 WPF 均新增新闻情绪卡片（看多/看空 Top5 + 数据源/更新时间状态）
+- **增量 alpha 验证**：rolling_backtest 三模式（合成注入/真实/对照）+ 新闻因子 IC 分析
+- **信号归档与回看**：predict.mjs 追加 history.jsonl + news_history.mjs 回看情绪轨迹
+
+### Changed
+
+- 单元测试 21 → 28 项；docs 新增 09/10 与 UPDATE_REPORT；版本号 1.1.0 → 1.2.0
+
 ## [1.1.0] - 2026-08-14
 
 ### Added

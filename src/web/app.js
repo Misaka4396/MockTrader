@@ -227,6 +227,52 @@
     el.className = `v ${value > 0 ? 'pos' : value < 0 ? 'neg' : ''}`;
   }
 
+  // ---- 新闻情绪 ----
+  function renderNewsSentiment() {
+    const codes = MT.METADATA.map(function (m) {
+      return m.code;
+    });
+    const items = MT.generateMockNews(codes, { seed: 'web-mock-news' });
+    const nowTs = Date.now();
+    const scored = codes.map(function (code) {
+      const r = MT.sentimentFactor(items, code, nowTs, { lookbackHours: 4 });
+      return { code: code, factor: r ? r.factor : 0 };
+    });
+    scored.sort(function (a, b) {
+      return b.factor - a.factor;
+    });
+    const bull = scored.slice(0, 5);
+    const bear = scored.slice(-5).reverse();
+    function fill(el, list, color) {
+      el.innerHTML = '';
+      list.forEach(function (s) {
+        const row = document.createElement('div');
+        row.className = 'news-item';
+        const codeEl = document.createElement('span');
+        codeEl.className = 'code';
+        codeEl.textContent = s.code;
+        const track = document.createElement('span');
+        track.className = 'track';
+        const bar = document.createElement('span');
+        bar.className = 'fill';
+        bar.style.width = `${Math.min(100, Math.abs(s.factor) * 60).toFixed(0)}%`;
+        bar.style.background = color;
+        track.appendChild(bar);
+        const val = document.createElement('span');
+        val.className = 'val';
+        val.textContent = s.factor.toFixed(2);
+        row.appendChild(codeEl);
+        row.appendChild(track);
+        row.appendChild(val);
+        el.appendChild(row);
+      });
+    }
+    fill($('newsBullish'), bull, 'var(--good)');
+    fill($('newsBearish'), bear, 'var(--bad)');
+    $('newsStatus').textContent =
+      `数据源: 演示(模拟) · ${items.length} 条新闻 · 更新时间 ${new Date().toLocaleTimeString('zh-CN')}`;
+  }
+
   // ---- 初始化 ----
   function init() {
     buildVarietyPicker();
@@ -267,6 +313,7 @@
 
     // 默认给一条占位说明
     chart.setData([], []);
+    renderNewsSentiment();
   }
 
   if (document.readyState === 'loading') {
