@@ -3,6 +3,20 @@
 本项目所有重要变更均记录在此文件中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### Added
+
+- **Lint/Format 工具链**：ESLint 9（flat config）+ Prettier 3 + .editorconfig；质量与格式职责分离，`npm run lint` / `npm run format`。
+- **Git Hooks**：husky + lint-staged（提交前自动 lint+format）+ commitlint（Conventional Commits 强制校验提交信息）。
+- **CI 流水线**：GitHub Actions（.github/workflows/ci.yml）——lint → format check → commitlint → 21 项单测 → build:web → smoke，push/PR 触发。
+- **开源治理**：CONTRIBUTING.md、CODE_OF_CONDUCT.md（Contributor Covenant 2.1）、Issue 模板（bug/feature）、PR 模板。
+
+### Changed
+
+- `src/web/`（app.js / worker.js）消除全部 `var`（改用 let/const，并修复 `worker` 未声明即使用的隐式全局缺陷）。
+- 全量 JS 代码按 Prettier 规范重排（行宽 100、单引号、尾逗号）；清理 13 处未使用导入。
+
 ## [1.0.0] - 2026-08-14
 
 ### Added

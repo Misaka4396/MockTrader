@@ -7,6 +7,7 @@
 [![Node](https://img.shields.io/badge/Node-%3E%3D18-339933.svg)](package.json)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](cs/)
 [![Test](https://img.shields.io/badge/test-21%20passed-brightgreen.svg)](test/)
+[![CI](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml/badge.svg)](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml)
 
 MockTrader is an open-source **commodity-futures long-short factor backtesting system** for the Chinese market — multi-contract **roll yields** + a **long-short portfolio** (Option B), benchmarked against Nasdaq long-term returns (single-value baseline).
 
@@ -32,6 +33,8 @@ It ships **three artifacts**: a portable **JS core**, a **self-contained Web pro
 
 ```sh
 npm test                  # 21 unit tests (S1-S5 acceptance)
+npm run lint              # ESLint quality check
+npm run format            # Prettier formatting
 node tools/persist.mjs    # persist local data files to data/
 npm run build:web         # bundle dist/index.html
 # double-click dist/index.html to run (offline self-contained)

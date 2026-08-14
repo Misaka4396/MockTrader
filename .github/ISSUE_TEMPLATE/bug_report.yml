@@ -1,0 +1,57 @@
+name: Bug report
+description: 提交缺陷报告（程序行为与预期不符）
+title: "[bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！请尽量提供可复现信息，这能帮助我们快速定位。
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 运行方式
+      description: 如 v1.0.0 · Web 原型（dist/index.html）或 C# 版（release/）
+      placeholder: v1.0.0 · Web 原型
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 期望行为
+      description: 描述你期望发生什么
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 描述实际发生了什么（附错误信息/截图）
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 1. 选择品种/参数… 2. 点击运行… 3. 出现…
+      placeholder: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 影响模块
+      options:
+        - 数据层 S1
+        - 因子引擎 S2
+        - 策略引擎 S3
+        - 回测引擎 S4
+        - 绩效引擎 S5
+        - Web 界面 S6/S7
+        - C# 版 S8
+        - 构建/工具链
+    validations:
+      required: true

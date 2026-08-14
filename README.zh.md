@@ -7,6 +7,7 @@
 [![Node](https://img.shields.io/badge/Node-%3E%3D18-339933.svg)](package.json)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](cs/)
 [![Test](https://img.shields.io/badge/test-21%20passed-brightgreen.svg)](test/)
+[![CI](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml/badge.svg)](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml)
 
 中国商品期货 **多合约 + 展期收益率 + 多空组合** 因子回测系统（方案 B），对比纳指长线收益率（单值基准）。
 交付**三套产物**：可移植 **JS 核心** + 自包含 **Web 原型**（开发/验证/可视化）+ 原生 **C# exe+dll**（S8），
@@ -40,6 +41,8 @@ C# 每个 dll 职责与 JS 模块一一对应，同一确定性种子下**逐位
 
 ```bash
 npm test                       # 21 项单元测试（S1-S5 验收）
+npm run lint                   # ESLint 质量检查
+npm run format                 # Prettier 格式化
 node tools/persist.mjs         # 生成本地数据文件到 data/
 npm run build:web              # 打包为 dist/index.html
 # 双击 dist/index.html 即可运行（离线自包含，后台线程 + 进度条不卡 UI）
