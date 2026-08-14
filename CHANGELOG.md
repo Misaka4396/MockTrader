@@ -21,6 +21,8 @@
   编译通过 + 数值一致性验证逐位不变（期末权益 9,164,404 / 450 笔 / 245 展期 / 年化 -2.78% / 结论「跑输」）。
 - **API 文档**：接入 TypeDoc（`npm run docs:api` 生成 docs/api，产物不入库），修复 `buildMainSub` JSDoc 兼容性。
 - **工具链修复**：lint-staged 排除 `dist/**`（构建产物不再被 eslint/prettier 改写）。
+- **E2E 冒烟（P10 整改）**：Playwright 驱动 `dist/index.html`（离线自包含 + 系统 Edge/Chromium 双通道），
+  跑通 45 品种全流水线并断言结论卡片「跑输」、6 项 KPI、摘要、Canvas 与零页面错误；已纳入 CI 质量门禁。
 
 ## [1.0.0] - 2026-08-14
 

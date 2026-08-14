@@ -8,6 +8,10 @@ release/
 # Node
 node_modules/
 
+# Playwright 产物
+test-results/
+playwright-report/
+
 # husky 内部目录（hook 文件本身提交）
 .husky/_
 
@@ -23,5 +27,5 @@ Desktop.ini
 # Release 附件打包产物
 dist/*.zip
 
-# TypeDoc �����npm run docs:api ����ʱ�������ɣ�
+# TypeDoc 生成物（npm run docs:api 可随时重新生成）
 docs/api/

@@ -40,3 +40,8 @@ jobs:
 
       - name: Smoke verification (bundle == source + worker + HTML)
         run: npm run smoke
+
+      - name: E2E smoke (Web prototype in headless Chromium)
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test --project=chromium
