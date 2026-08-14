@@ -1,0 +1,11 @@
+{
+  "entryPoints": ["src/core/index.js"],
+  "out": "docs/api",
+  "name": "MockTrader Core API",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "readme": "none",
+  "tsconfig": "tsconfig.json",
+  "skipErrorChecking": true
+}

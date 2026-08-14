@@ -12,6 +12,7 @@ export default [
       'data/**',
       'release/**',
       'cs/**',
+      'docs/api/**',
       '.dotnet-home/**',
       '.nuget-packages/**',
     ],

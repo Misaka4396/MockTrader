@@ -862,6 +862,7 @@ function better(a, b) {
  * 逐日判定主力/次主力。
  * 主力带迟滞（hysteresis）：只有当挑战者持仓量超过当前主力 × hysteresis 才切换，避免噪声导致的频繁抖动；
  * 当前主力到期（无数据）时强制切换。次主力 = 除主力外持仓量最高者。
+ * @param {Object} [opts] 选项对象
  * @param {number} [opts.hysteresis] 切换阈值系数，默认 1.15
  * @returns {{mainByDate: Object<string,string|null>, subByDate: Object<string,string|null>}}
  */

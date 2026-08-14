@@ -10,3 +10,5 @@ node_modules/
 # 文档保持手写格式（长表格/中文排版）
 docs/
 *.md
+
+docs/api/
