@@ -1,0 +1,12 @@
+# 构建产物与外部代码不参与格式化
+dist/
+data/
+release/
+cs/
+node_modules/
+.dotnet-home/
+.nuget-packages/
+
+# 文档保持手写格式（长表格/中文排版）
+docs/
+*.md

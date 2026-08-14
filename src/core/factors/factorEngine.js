@@ -32,13 +32,19 @@ export const FACTOR_SIGNS = { momentum: 1, liquidity: 1, volume: 1, skewness: 1,
 /** 样本偏度 */
 export function skewness(arr) {
   const n = arr.length;
-  if (n < 3) return NaN;
+  if (n < 3) {
+    return NaN;
+  }
   const m = mean(arr);
   const s = std(arr, 0);
-  if (!(s > 0)) return NaN;
+  if (!(s > 0)) {
+    return NaN;
+  }
   let acc = 0;
-  for (let i = 0; i < n; i++) acc += Math.pow(arr[i] - m, 3);
-  return (acc / n) / Math.pow(s, 3);
+  for (let i = 0; i < n; i++) {
+    acc += Math.pow(arr[i] - m, 3);
+  }
+  return acc / n / Math.pow(s, 3);
 }
 
 function asArray(n) {
@@ -74,19 +80,32 @@ export function computeVarietyFactors(ds, code, params) {
   for (let t = 1; t < T; t++) {
     const a = series.mainAdj[t];
     const b = series.mainAdj[t - 1];
-    if (a != null && b != null && b > 0) ret[t] = a / b - 1;
+    if (a != null && b != null && b > 0) {
+      ret[t] = a / b - 1;
+    }
   }
 
   for (let t = 0; t < T; t++) {
     // ---- momentum (skip 近 1 月) ----
     const iEnd = t - mom.skip;
     const iStart = t - mom.lookback;
-    if (iStart >= 0 && iEnd >= 0 && series.mainAdj[iEnd] != null && series.mainAdj[iStart] != null && series.mainAdj[iStart] > 0) {
+    if (
+      iStart >= 0 &&
+      iEnd >= 0 &&
+      series.mainAdj[iEnd] != null &&
+      series.mainAdj[iStart] != null &&
+      series.mainAdj[iStart] > 0
+    ) {
       out.momentum[t] = series.mainAdj[iEnd] / series.mainAdj[iStart] - 1;
     }
 
     // ---- liquidity: turnover & Amihud ----
-    if (series.mainRaw[t] != null && series.mainVol[t] != null && series.mainOi[t] != null && series.mainOi[t] > 0) {
+    if (
+      series.mainRaw[t] != null &&
+      series.mainVol[t] != null &&
+      series.mainOi[t] != null &&
+      series.mainOi[t] > 0
+    ) {
       out.turnover[t] = (series.mainRaw[t] * series.mainVol[t]) / series.mainOi[t];
     }
     const w = liq.amihudWindow;
@@ -94,13 +113,18 @@ export function computeVarietyFactors(ds, code, params) {
       let acc = 0;
       let cnt = 0;
       for (let i = t - w + 1; i <= t; i++) {
-        const dolVol = series.mainRaw[i] != null && series.mainVol[i] != null ? series.mainRaw[i] * series.mainVol[i] : null;
+        const dolVol =
+          series.mainRaw[i] != null && series.mainVol[i] != null
+            ? series.mainRaw[i] * series.mainVol[i]
+            : null;
         if (ret[i] != null && dolVol != null && dolVol > 0) {
           acc += Math.abs(ret[i]) / dolVol;
           cnt++;
         }
       }
-      if (cnt > 0) out.amihud[t] = acc / cnt;
+      if (cnt > 0) {
+        out.amihud[t] = acc / cnt;
+      }
     }
     out.liquidity[t] = out.amihud[t] != null ? -out.amihud[t] : null;
 
@@ -110,17 +134,28 @@ export function computeVarietyFactors(ds, code, params) {
       let s = 0;
       let cnt = 0;
       for (let i = t - vw; i < t; i++) {
-        if (series.mainVol[i] != null) { s += series.mainVol[i]; cnt++; }
+        if (series.mainVol[i] != null) {
+          s += series.mainVol[i];
+          cnt++;
+        }
       }
-      if (cnt > 0 && s > 0) out.volume[t] = series.mainVol[t] / (s / cnt) - 1;
+      if (cnt > 0 && s > 0) {
+        out.volume[t] = series.mainVol[t] / (s / cnt) - 1;
+      }
     }
 
     // ---- skewness ----
     const sw = sk.window;
     if (t >= sw) {
       const win = [];
-      for (let i = t - sw + 1; i <= t; i++) if (ret[i] != null) win.push(ret[i]);
-      if (win.length >= 10) out.skewness[t] = skewness(win);
+      for (let i = t - sw + 1; i <= t; i++) {
+        if (ret[i] != null) {
+          win.push(ret[i]);
+        }
+      }
+      if (win.length >= 10) {
+        out.skewness[t] = skewness(win);
+      }
     }
 
     // ---- roll yield ----
@@ -145,18 +180,27 @@ export function computeVarietyFactors(ds, code, params) {
  */
 export function crossSectionalZ(dates, varieties, rawByCode, winsorizeK) {
   const out = {};
-  for (const code of varieties) out[code] = asArray(dates.length);
+  for (const code of varieties) {
+    out[code] = asArray(dates.length);
+  }
   for (let t = 0; t < dates.length; t++) {
     const vals = [];
     const idx = [];
     for (const code of varieties) {
       const v = rawByCode[code][t];
-      if (v != null && Number.isFinite(v)) { vals.push(v); idx.push(code); }
+      if (v != null && Number.isFinite(v)) {
+        vals.push(v);
+        idx.push(code);
+      }
     }
-    if (vals.length < 2) continue;
+    if (vals.length < 2) {
+      continue;
+    }
     const w = winsorize(vals, winsorizeK);
     const z = zscore(w);
-    for (let k = 0; k < idx.length; k++) out[idx[k]][t] = z[k];
+    for (let k = 0; k < idx.length; k++) {
+      out[idx[k]][t] = z[k];
+    }
   }
   return out;
 }
@@ -180,7 +224,9 @@ export class FactorEngine {
     const aux = { turnover: {}, amihud: {} };
     for (const code of varieties) {
       const f = computeVarietyFactors(ds, code, p);
-      for (const k of ['momentum', 'liquidity', 'volume', 'skewness', 'rollYield']) raw[k][code] = f[k];
+      for (const k of ['momentum', 'liquidity', 'volume', 'skewness', 'rollYield']) {
+        raw[k][code] = f[k];
+      }
       aux.turnover[code] = f.turnover;
       aux.amihud[code] = f.amihud;
     }

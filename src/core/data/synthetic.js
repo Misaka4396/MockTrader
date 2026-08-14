@@ -10,7 +10,6 @@
  */
 
 import { rngFromString, randn, tradingDates, addDays, diffDays, roundTo } from '../utils.js';
-import { METADATA } from './metadata.js';
 
 /** 板块级合成参数默认值 */
 export const SECTOR_SIM_DEFAULT = {
@@ -40,7 +39,6 @@ export function simParams(code, sector) {
   return Object.assign({}, SECTOR_SIM_DEFAULT[sector], SIM_OVERRIDES[code] || {});
 }
 
-const DAYS_PER_MONTH = 30.44;
 const DT = 1 / 252;
 
 /** 合约代码：RB + YYMM -> 'RB2305' */
@@ -65,9 +63,9 @@ function volShape(m, peak, spread) {
 
 /** 月份列表（meta.months 或全部 12 个月） */
 function deliveryMonths(meta) {
-  if (meta.months) return meta.months.slice();
+  if (meta.months) {return meta.months.slice();}
   const all = [];
-  for (let m = 1; m <= 12; m++) all.push(m);
+  for (let m = 1; m <= 12; m++) {all.push(m);}
   return all;
 }
 
@@ -77,7 +75,7 @@ function deliveryMonths(meta) {
  */
 export function generateVariety(meta, dates, masterSeed) {
   const sim = simParams(meta.code, meta.sector);
-  const rng = rngFromString(masterSeed + ':' + meta.code);
+  const rng = rngFromString(`${masterSeed }:${ meta.code}`);
   const N = dates.length;
   const first = dates[0];
   const last = dates[N - 1];
@@ -124,10 +122,10 @@ export function generateVariety(meta, dates, masterSeed) {
   for (let y = y0 - 1; y <= y1 + 1; y++) {
     for (const mm of months) {
       const del = deliveryISO(y, mm);
-      const listDate = addDays(del, -360);       // 约 12 个月前上市
-      const lastTrade = addDays(del, -7);        // 交割前约一周停止交易
+      const listDate = addDays(del, -360); // 约 12 个月前上市
+      const lastTrade = addDays(del, -7); // 交割前约一周停止交易
       // 仅保留与样本区间有交集的合约
-      if (lastTrade < first || listDate > last) continue;
+      if (lastTrade < first || listDate > last) {continue;}
       codes.push({ code: contractCode(meta.code, y, mm), del, listDate, lastTrade });
     }
   }
@@ -138,11 +136,11 @@ export function generateVariety(meta, dates, masterSeed) {
     const bars = [];
     let prevClose = null;
     for (const d of dates) {
-      if (d < con.listDate || d > con.lastTrade) continue;
+      if (d < con.listDate || d > con.lastTrade) {continue;}
       // 品种退市门控：退市日之后不再出数据
-      if (meta.delist && d > meta.delist) continue;
+      if (meta.delist && d > meta.delist) {continue;}
       const i = idxOf.get(d);
-      if (i === undefined) continue;
+      if (i === undefined) {continue;}
       const spot = Math.exp(logP[i]);
       const ttm = Math.max(diffDays(d, con.del), 1) / 365;
       const fair = spot * Math.exp(carry[i] * ttm) * (1 + basisC);
@@ -172,7 +170,7 @@ export function generateVariety(meta, dates, masterSeed) {
       });
       prevClose = close;
     }
-    if (bars.length) contracts[con.code] = bars;
+    if (bars.length) {contracts[con.code] = bars;}
   }
   return { code: meta.code, contracts };
 }

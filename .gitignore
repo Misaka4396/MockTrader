@@ -8,6 +8,9 @@ release/
 # Node
 node_modules/
 
+# husky 内部目录（hook 文件本身提交）
+.husky/_
+
 # 系统文件
 Thumbs.db
 Desktop.ini
@@ -17,5 +20,5 @@ Desktop.ini
 .vscode/
 .idea/
 
-# Release �����������
+# Release 附件打包产物
 dist/*.zip

@@ -1,7 +1,8 @@
 /* worker.js — 后台线程运行核心流水线（不卡 UI），回传进度与结果 */
 (function () {
   'use strict';
-  var MT = (typeof self !== 'undefined' && self.MockTrader) ? self.MockTrader : globalThis.MockTrader;
+  const MT =
+    typeof self !== 'undefined' && self.MockTrader ? self.MockTrader : globalThis.MockTrader;
 
   function serialize(result) {
     return {
@@ -21,11 +22,15 @@
   }
 
   self.onmessage = function (e) {
-    var config = e.data.config;
+    const config = e.data.config;
     try {
-      var result = MT.runPipeline(Object.assign({}, config, {
-        onProgress: function (step, frac) { self.postMessage({ type: 'progress', step: step, frac: frac }); },
-      }));
+      const result = MT.runPipeline(
+        Object.assign({}, config, {
+          onProgress: function (step, frac) {
+            self.postMessage({ type: 'progress', step: step, frac: frac });
+          },
+        })
+      );
       self.postMessage({ type: 'result', result: serialize(result) });
     } catch (err) {
       self.postMessage({ type: 'error', message: String((err && err.message) || err) });

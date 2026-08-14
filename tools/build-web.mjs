@@ -15,28 +15,43 @@ const mods = {};
 function resolveId(fromId, spec) {
   const parts = [];
   const fromDir = fromId.includes('/') ? fromId.slice(0, fromId.lastIndexOf('/')) : '';
-  if (fromDir) parts.push(...fromDir.split('/'));
+  if (fromDir) {
+    parts.push(...fromDir.split('/'));
+  }
   for (const seg of spec.split('/')) {
-    if (seg === '.' || seg === '') continue;
-    if (seg === '..') parts.pop();
-    else if (seg.endsWith('.js')) parts.push(seg.slice(0, -3));
-    else parts.push(seg);
+    if (seg === '.' || seg === '') {
+      continue;
+    }
+    if (seg === '..') {
+      parts.pop();
+    } else if (seg.endsWith('.js')) {
+      parts.push(seg.slice(0, -3));
+    } else {
+      parts.push(seg);
+    }
   }
   return parts.join('/');
 }
 
 function collect(id) {
-  if (mods[id]) return;
-  const src = read(join(coreDir, id + '.js'));
+  if (mods[id]) {
+    return;
+  }
+  const src = read(join(coreDir, `${id}.js`));
   const imports = [];
-  const re = /^import\s+\{([^}]*)\}\s+from\s+'([^']+)';|^import\s+\*\s+as\s+(\w+)\s+from\s+'([^']+)';/gm;
+  const re =
+    /^import\s+\{([^}]*)\}\s+from\s+'([^']+)';|^import\s+\*\s+as\s+(\w+)\s+from\s+'([^']+)';/gm;
   let m;
   while ((m = re.exec(src))) {
     if (m[1] != null) {
-      const names = m[1].split(',').map((s) => s.trim()).filter(Boolean).map((s) => {
-        const p = s.split(/\s+as\s+/).map((x) => x.trim());
-        return p.length === 2 ? { imported: p[0], local: p[1] } : { imported: p[0], local: p[0] };
-      });
+      const names = m[1]
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => {
+          const p = s.split(/\s+as\s+/).map((x) => x.trim());
+          return p.length === 2 ? { imported: p[0], local: p[1] } : { imported: p[0], local: p[0] };
+        });
       imports.push({ type: 'named', names, resolvedId: resolveId(id, m[2]) });
     } else {
       imports.push({ type: 'ns', ns: m[3], resolvedId: resolveId(id, m[4]) });
@@ -44,16 +59,23 @@ function collect(id) {
   }
   const exports = [];
   const ere = /^export\s+(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/gm;
-  while ((m = ere.exec(src))) exports.push(m[1]);
+  while ((m = ere.exec(src))) {
+    exports.push(m[1]);
+  }
   const ere2 = /^export\s*\{([^}]*)\};/gm;
   while ((m = ere2.exec(src))) {
-    for (const s of m[1].split(',').map((x) => x.trim()).filter(Boolean)) {
+    for (const s of m[1]
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)) {
       const p = s.split(/\s+as\s+/).map((x) => x.trim());
       exports.push(p.length === 2 ? p[1] : p[0]);
     }
   }
   mods[id] = { src, imports, exports: [...new Set(exports)] };
-  for (const im of imports) collect(im.resolvedId);
+  for (const im of imports) {
+    collect(im.resolvedId);
+  }
 }
 collect('index');
 
@@ -63,16 +85,23 @@ function transform(id) {
   src = src.replace(/^import\s+[^;]*;/gm, '');
   src = src.replace(/^export\s*\{[^}]*\};?$/gm, '');
   src = src.replace(/^export\s+(?=(?:const|let|var|function|class)\b)/gm, '');
-  const importLines = mod.imports.map((im) => {
-    if (im.type === 'named') {
-      const d = im.names.map((n) => (n.imported === n.local ? n.local : n.imported + ': ' + n.local)).join(', ');
-      return '  const { ' + d + ' } = __req(' + JSON.stringify(im.resolvedId) + ');';
-    }
-    return '  const ' + im.ns + ' = __req(' + JSON.stringify(im.resolvedId) + ');';
-  }).join('\n');
-  const exportStmt = mod.exports.length ? '\n  Object.assign(__exports, { ' + mod.exports.join(', ') + ' });' : '';
-  return '__def(' + JSON.stringify(id) + ', function(__req, __exports) {' +
-    (importLines ? '\n' + importLines : '') + '\n' + src + exportStmt + '\n});';
+  const importLines = mod.imports
+    .map((im) => {
+      if (im.type === 'named') {
+        const d = im.names
+          .map((n) => (n.imported === n.local ? n.local : `${n.imported}: ${n.local}`))
+          .join(', ');
+        return `  const { ${d} } = __req(${JSON.stringify(im.resolvedId)});`;
+      }
+      return `  const ${im.ns} = __req(${JSON.stringify(im.resolvedId)});`;
+    })
+    .join('\n');
+  const exportStmt = mod.exports.length
+    ? `\n  Object.assign(__exports, { ${mod.exports.join(', ')} });`
+    : '';
+  return `__def(${JSON.stringify(id)}, function(__req, __exports) {${
+    importLines ? `\n${importLines}` : ''
+  }\n${src}${exportStmt}\n});`;
 }
 
 const defs = Object.keys(mods).map(transform).join('\n');
@@ -101,7 +130,7 @@ const appJs = read(join(webDir, 'app.js'));
 const workerJs = read(join(webDir, 'worker.js'));
 const template = read(join(webDir, 'template.html'));
 
-const workerSource = coreBundle + '\n' + workerJs;
+const workerSource = `${coreBundle}\n${workerJs}`;
 const appWithWorker = appJs.replace('__WORKER_SOURCE__', JSON.stringify(workerSource));
 
 const html = template

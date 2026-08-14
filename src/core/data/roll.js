@@ -13,7 +13,7 @@ export function buildIndex(contracts) {
   const idx = {};
   for (const code of Object.keys(contracts)) {
     const m = new Map();
-    for (const b of contracts[code]) m.set(b.date, b);
+    for (const b of contracts[code]) {m.set(b.date, b);}
     idx[code] = m;
   }
   return idx;
@@ -21,8 +21,8 @@ export function buildIndex(contracts) {
 
 /** 排序优先级：持仓量 desc -> 成交量 desc -> 合约代码(交割月) asc */
 function better(a, b) {
-  if (a.oi !== b.oi) return a.oi > b.oi;
-  if (a.vol !== b.vol) return a.vol > b.vol;
+  if (a.oi !== b.oi) {return a.oi > b.oi;}
+  if (a.vol !== b.vol) {return a.vol > b.vol;}
   return a.code < b.code;
 }
 
@@ -44,7 +44,7 @@ export function buildMainSub(dates, contracts, opts = {}) {
     const cands = [];
     for (const c of codes) {
       const b = idx[c].get(d);
-      if (b) cands.push({ code: c, oi: b.openInterest, vol: b.volume, bar: b });
+      if (b) {cands.push({ code: c, oi: b.openInterest, vol: b.volume, bar: b });}
     }
     if (!cands.length) {
       mainByDate[d] = null;
@@ -69,7 +69,7 @@ export function buildMainSub(dates, contracts, opts = {}) {
     currentMain = main;
     let sub = null;
     for (const cand of cands) {
-      if (cand.code === main) continue;
+      if (cand.code === main) {continue;}
       sub = cand.code;
       break;
     }
@@ -92,8 +92,8 @@ export function backAdjustFactors(dates, codeByDate, getClose) {
     if (cur && nxt && cur !== nxt) {
       const cn = getClose(nxt, dates[t]);
       const co = getClose(cur, dates[t]);
-      if (cn != null && co != null && co > 0) factors[t] = factors[t + 1] * (cn / co);
-      else factors[t] = factors[t + 1];
+      if (cn != null && co != null && co > 0) {factors[t] = factors[t + 1] * (cn / co);}
+      else {factors[t] = factors[t + 1];}
     } else {
       factors[t] = factors[t + 1];
     }

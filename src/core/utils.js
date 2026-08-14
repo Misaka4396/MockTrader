@@ -39,8 +39,12 @@ export function rngFromString(key) {
 export function randn(rng) {
   let u = 0;
   let v = 0;
-  while (u === 0) u = rng();
-  while (v === 0) v = rng();
+  while (u === 0) {
+    u = rng();
+  }
+  while (v === 0) {
+    v = rng();
+  }
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
@@ -87,7 +91,9 @@ export function tradingDates(startIso, endIso) {
   let cur = startIso;
   const end = parseISO(endIso);
   while (parseISO(cur) <= end) {
-    if (isWeekday(cur)) out.push(cur);
+    if (isWeekday(cur)) {
+      out.push(cur);
+    }
     cur = addDays(cur, 1);
   }
   return out;
@@ -95,8 +101,12 @@ export function tradingDates(startIso, endIso) {
 
 /** 日期是否在 [start, end] 内 (含端点；空串视为无界) */
 export function inRange(iso, startIso, endIso) {
-  if (startIso && iso < startIso) return false;
-  if (endIso && iso > endIso) return false;
+  if (startIso && iso < startIso) {
+    return false;
+  }
+  if (endIso && iso > endIso) {
+    return false;
+  }
   return true;
 }
 
@@ -106,22 +116,30 @@ export function inRange(iso, startIso, endIso) {
 
 export function sum(arr) {
   let s = 0;
-  for (let i = 0; i < arr.length; i++) s += arr[i];
+  for (let i = 0; i < arr.length; i++) {
+    s += arr[i];
+  }
   return s;
 }
 
 export function mean(arr) {
-  if (!arr.length) return NaN;
+  if (!arr.length) {
+    return NaN;
+  }
   return sum(arr) / arr.length;
 }
 
 /** 样本方差 (ddof=1) 或总体方差 (ddof=0) */
 export function variance(arr, ddof = 1) {
   const n = arr.length;
-  if (n - ddof <= 0) return NaN;
+  if (n - ddof <= 0) {
+    return NaN;
+  }
   const m = mean(arr);
   let s = 0;
-  for (let i = 0; i < n; i++) s += (arr[i] - m) * (arr[i] - m);
+  for (let i = 0; i < n; i++) {
+    s += (arr[i] - m) * (arr[i] - m);
+  }
   return s / (n - ddof);
 }
 
@@ -131,10 +149,16 @@ export function std(arr, ddof = 1) {
 
 /** 线性插值分位数 (p in [0,1]) */
 export function percentile(arr, p) {
-  if (!arr.length) return NaN;
+  if (!arr.length) {
+    return NaN;
+  }
   const sorted = arr.slice().sort((a, b) => a - b);
-  if (p <= 0) return sorted[0];
-  if (p >= 1) return sorted[sorted.length - 1];
+  if (p <= 0) {
+    return sorted[0];
+  }
+  if (p >= 1) {
+    return sorted[sorted.length - 1];
+  }
   const idx = (sorted.length - 1) * p;
   const lo = Math.floor(idx);
   const hi = Math.ceil(idx);
@@ -151,7 +175,9 @@ export function median(arr) {
 export function zscore(arr) {
   const m = mean(arr);
   const s = std(arr, 0);
-  if (!(s > 0)) return arr.map(() => 0);
+  if (!(s > 0)) {
+    return arr.map(() => 0);
+  }
   return arr.map((x) => (x - m) / s);
 }
 
@@ -163,9 +189,13 @@ export function rank(arr) {
   let i = 0;
   while (i < n) {
     let j = i;
-    while (j + 1 < n && idx[j + 1].v === idx[i].v) j++;
+    while (j + 1 < n && idx[j + 1].v === idx[i].v) {
+      j++;
+    }
     const avg = (i + j) / 2 + 1; // 1-based average rank
-    for (let k = i; k <= j; k++) out[idx[k].i] = avg;
+    for (let k = i; k <= j; k++) {
+      out[idx[k].i] = avg;
+    }
     i = j + 1;
   }
   return out;
@@ -174,7 +204,9 @@ export function rank(arr) {
 /** Pearson 相关系数 */
 export function pearson(a, b) {
   const n = a.length;
-  if (n < 2 || n !== b.length) return NaN;
+  if (n < 2 || n !== b.length) {
+    return NaN;
+  }
   const ma = mean(a);
   const mb = mean(b);
   let num = 0;
@@ -186,7 +218,9 @@ export function pearson(a, b) {
     db += (b[i] - mb) * (b[i] - mb);
   }
   const den = Math.sqrt(da * db);
-  if (!(den > 0)) return NaN;
+  if (!(den > 0)) {
+    return NaN;
+  }
   return num / den;
 }
 
@@ -197,7 +231,9 @@ export function spearman(a, b) {
 
 /** 稳健 winsorize：基于中位数 + MAD 截尾 (k 倍 MAD) */
 export function winsorize(arr, k = 2.5) {
-  if (!arr.length) return arr.slice();
+  if (!arr.length) {
+    return arr.slice();
+  }
   const med = median(arr);
   const absDev = arr.map((x) => Math.abs(x - med));
   const mad = median(absDev) || 1e-12;
@@ -213,8 +249,12 @@ export function rollingMean(arr, window) {
   let s = 0;
   for (let i = 0; i < arr.length; i++) {
     s += arr[i];
-    if (i >= window) s -= arr[i - window];
-    if (i >= window - 1) out[i] = s / window;
+    if (i >= window) {
+      s -= arr[i - window];
+    }
+    if (i >= window - 1) {
+      out[i] = s / window;
+    }
   }
   return out;
 }
@@ -251,8 +291,12 @@ export function deepClone(obj) {
 /** 键控均值：对象 {key: number} -> values 的均值 */
 export function meanOfMap(map) {
   const keys = Object.keys(map);
-  if (!keys.length) return NaN;
+  if (!keys.length) {
+    return NaN;
+  }
   let s = 0;
-  for (const k of keys) s += map[k];
+  for (const k of keys) {
+    s += map[k];
+  }
   return s / keys.length;
 }

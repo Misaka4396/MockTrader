@@ -26,7 +26,7 @@ export class DataAccess {
   reset() {
     this.dates = [];
     this.dataset = null; // { code: { contracts: {[contractCode]: bars[]} } }
-    this.series = {};    // code -> continuousSeries 结果 (缓存)
+    this.series = {}; // code -> continuousSeries 结果 (缓存)
     this.config = null;
   }
 
@@ -42,7 +42,7 @@ export class DataAccess {
     const dataset = {};
     for (const code of codes) {
       const meta = METADATA_BY_CODE[code];
-      if (!meta) continue;
+      if (!meta) {continue;}
       dataset[code] = generateVariety(meta, dates, masterSeed);
     }
     this.dates = dates;
@@ -71,29 +71,29 @@ export class DataAccess {
 
   /** 某品种全部合约代码（已排序） */
   getContracts(code) {
-    if (!this.dataset || !this.dataset[code]) return [];
+    if (!this.dataset || !this.dataset[code]) {return [];}
     return Object.keys(this.dataset[code].contracts).sort();
   }
 
   /** 某合约日线 */
   getBars(code, contractCode) {
-    if (!this.dataset || !this.dataset[code]) return null;
+    if (!this.dataset || !this.dataset[code]) {return null;}
     return this.dataset[code].contracts[contractCode] || null;
   }
 
   /** 某合约某日 bar */
   getBar(code, contractCode, date) {
     const bars = this.getBars(code, contractCode);
-    if (!bars) return null;
+    if (!bars) {return null;}
     // 线性定位（数据按日期升序）
-    for (const b of bars) if (b.date === date) return b;
+    for (const b of bars) {if (b.date === date) {return b;}}
     return null;
   }
 
   /** 某品种主力/次主力连续序列（含后复权） */
   getSeries(code) {
-    if (!this.dataset || !this.dataset[code]) return null;
-    if (!this.series[code]) this.series[code] = continuousSeries(this.dates, this.dataset[code].contracts);
+    if (!this.dataset || !this.dataset[code]) {return null;}
+    if (!this.series[code]) {this.series[code] = continuousSeries(this.dates, this.dataset[code].contracts);}
     return this.series[code];
   }
 
@@ -119,13 +119,13 @@ export class DataAccess {
     const out = [];
     for (const code of this.codes) {
       const meta = METADATA_BY_CODE[code];
-      if (!meta) continue;
-      if (meta.list && date < meta.list) continue;
-      if (meta.delist && date > meta.delist) continue;
+      if (!meta) {continue;}
+      if (meta.list && date < meta.list) {continue;}
+      if (meta.delist && date > meta.delist) {continue;}
       const s = this.getSeries(code);
-      if (!s) continue;
+      if (!s) {continue;}
       const i = this.dates.indexOf(date);
-      if (i >= 0 && s.mainRaw[i] != null) out.push(code);
+      if (i >= 0 && s.mainRaw[i] != null) {out.push(code);}
     }
     return out;
   }
@@ -133,7 +133,7 @@ export class DataAccess {
   /** 导出可序列化快照（含全部合约与派生连续序列） */
   exportSnapshot() {
     const series = {};
-    for (const code of this.codes) series[code] = this.getSeries(code);
+    for (const code of this.codes) {series[code] = this.getSeries(code);}
     return {
       version: 1,
       config: this.config,
