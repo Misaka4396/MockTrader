@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>MockTrader</AssemblyName>
+    <RootNamespace>MockTrader</RootNamespace>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="DataAccess">
+      <HintPath>..\DataAccess\bin\Release\net8.0\DataAccess.dll</HintPath>
+    </Reference>
+    <Reference Include="StrategyCore">
+      <HintPath>..\StrategyCore\bin\Release\net8.0\StrategyCore.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

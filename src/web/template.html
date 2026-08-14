@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MockTrader · 商品期货多空因子回测</title>
+<style>
+__STYLES__
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="accent">MockTrader</span> 商品期货 · 多空因子回测</h1>
+  <span class="sub">S1-S7 原型 · 数据/因子/策略/回测/绩效 均为可移植 JS 核心 · 基准为可配置常数</span>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="card">
+      <h3>品种池（多选）</h3>
+      <div class="row">
+        <button class="btn ghost" id="selectAll">全选</button>
+        <button class="btn ghost" id="selectNone">清空</button>
+      </div>
+      <div id="varietyPicker"></div>
+    </div>
+
+    <div class="card">
+      <h3>策略</h3>
+      <div class="row"><label>策略</label>
+        <select id="strategy">
+          <option value="all" selected>5 因子合成</option>
+          <option value="momentum">单因子 · 截面动量</option>
+          <option value="liquidity">单因子 · 流动性</option>
+          <option value="volume">单因子 · 成交量</option>
+          <option value="skewness">单因子 · 价格偏度</option>
+          <option value="rollYield">单因子 · 展期收益率</option>
+        </select>
+      </div>
+      <div class="row"><label>多头数量</label><input type="number" id="longCount" value="5" min="1" max="20" /></div>
+      <div class="row"><label>空头数量</label><input type="number" id="shortCount" value="5" min="1" max="20" /></div>
+      <div class="row"><label>权重方案</label>
+        <select id="weighting"><option value="equal">等权</option><option value="score">得分加权</option></select>
+      </div>
+      <div class="row"><label>合成方式</label>
+        <select id="combine"><option value="equal">等权</option><option value="ic">IC 加权</option></select>
+      </div>
+      <div class="row"><label>调仓频率</label>
+        <select id="rebalance"><option value="monthly">月度</option><option value="weekly">周度</option></select>
+      </div>
+      <div class="row"><label>总敞口</label><input type="number" id="grossExposure" value="1.0" step="0.1" min="0.1" /></div>
+    </div>
+
+    <div class="card">
+      <h3>回测与基准</h3>
+      <div class="row"><label>初始资金</label><input type="number" id="initialCapital" value="10000000" step="1000000" /></div>
+      <div class="row"><label>手续费率</label><input type="number" id="commissionRate" value="0.0002" step="0.0001" /></div>
+      <div class="row"><label>滑点(跳)</label><input type="number" id="slippageTicks" value="1" step="1" /></div>
+      <div class="row"><label>纳指长线年化</label><input type="number" id="benchmark" value="0.15" step="0.01" /></div>
+      <p class="note">基准为<b>可配置常数</b>（默认 15%，约 10 年口径），非纳指逐日曲线。CTA 绝对收益与纳指低相关，此基准用于「是否值得主动交易」的决策参照，非同风险基准。</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="card">
+      <div class="row" style="justify-content: space-between;">
+        <button class="btn" id="runBtn">▶ 运行回测</button>
+        <span class="muted">后台线程异步运行，不阻塞界面</span>
+      </div>
+      <div class="progress"><div class="bar" id="progressBar"></div></div>
+      <div class="progress-label" id="progressLabel">就绪</div>
+      <div class="error" id="errorBox" style="display:none;"></div>
+    </div>
+
+    <div class="conclusion" id="conclusion">
+      <div style="flex:0 0 auto;">
+        <div class="verdict close" id="verdict">—</div>
+      </div>
+      <div style="flex:1;">
+        <div class="row" style="margin:2px 0;"><label style="width:90px;">策略年化</label><b id="cmpStrategy">—</b></div>
+        <div class="row" style="margin:2px 0;"><label style="width:90px;">基准年化</label><b id="cmpBenchmark">—</b></div>
+        <div class="row" style="margin:2px 0;"><label style="width:90px;">超额收益</label><b id="cmpExcess">—</b></div>
+      </div>
+      <div class="note" style="max-width:340px;" id="benchNote"></div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="v" id="kpiReturn">—</div><div class="k">年化收益率</div></div>
+      <div class="kpi"><div class="v" id="kpiSharpe">—</div><div class="k">Sharpe</div></div>
+      <div class="kpi"><div class="v" id="kpiVol">—</div><div class="k">波动率</div></div>
+      <div class="kpi"><div class="v" id="kpiMaxDD">—</div><div class="k">最大回撤</div></div>
+      <div class="kpi"><div class="v" id="kpiCalmar">—</div><div class="k">卡玛比率</div></div>
+      <div class="kpi"><div class="v" id="kpiWin">—</div><div class="k">胜率</div></div>
+    </div>
+
+    <div class="card chart-wrap">
+      <div class="chart-toolbar">
+        <button class="btn ghost active range-btn" data-range="all">全部</button>
+        <button class="btn ghost range-btn" data-range="3y">近3年</button>
+        <button class="btn ghost range-btn" data-range="1y">近1年</button>
+        <label style="margin-left:12px;"><input type="checkbox" id="benchToggle" checked /> 基准复利虚线</label>
+        <label><input type="checkbox" id="ddToggle" /> 回撤阴影</label>
+        <span class="muted">滚轮缩放 · 拖拽平移 · 双击复位 · 悬停读数</span>
+      </div>
+      <canvas id="chart"></canvas>
+    </div>
+
+    <div class="card note" id="summary">—</div>
+  </main>
+</div>
+
+<script>
+__CORE__
+</script>
+<script>
+__CHART__
+</script>
+<script>
+__APP__
+</script>
+</body>
+</html>

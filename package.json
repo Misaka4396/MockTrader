@@ -1,0 +1,16 @@
+{
+  "name": "mocktrader-futures",
+  "version": "0.1.0",
+  "description": "Portable commodity-futures quant core (data / factors / strategy / backtest / performance) + self-contained web prototype. Sandbox-safe alternative to the C# exe+dll build (S1-S8).",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node test/run-tests.mjs",
+    "smoke": "node tools/smoke.mjs",
+    "build:web": "node tools/build-web.mjs"
+  }
+}
