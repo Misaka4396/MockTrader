@@ -16,3 +16,6 @@ Desktop.ini
 # ç¼–è¾‘å™¨
 .vscode/
 .idea/
+
+# Release ¸½¼þ´ò°ü²úÎï
+dist/*.zip
