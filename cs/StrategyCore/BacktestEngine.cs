@@ -12,6 +12,9 @@ namespace MockTrader.Core
         public double SlippageTicks { get; set; } = 1;
         public int ExecutionDelay { get; set; } = 1;
         public double MaxLeverage { get; set; } = 1.5;
+        public double ImpactCoef { get; set; } = 0;
+        public int AdvWindow { get; set; } = 20;
+        public double DrawdownCutoff { get; set; } = 0;
     }
 
     public sealed class Trade
@@ -72,6 +75,7 @@ namespace MockTrader.Core
         public double TotalRollCost { get; set; }
         public int NTrades { get; set; }
         public int NRolls { get; set; }
+        public bool CircuitBroken { get; set; }
     }
 
     public sealed class BacktestResult
@@ -125,8 +129,32 @@ namespace MockTrader.Core
 
             (int execIdx, Dictionary<string, double> targets)? pending = null;
 
-            double LegCost(Variety meta, double price, int lots) =>
-                cfg.CommissionRate * price * meta.Mult * lots + cfg.SlippageTicks * meta.TickValue * lots;
+            double AdvLots(string code, int t)
+            {
+                var s = S(code);
+                int w = cfg.AdvWindow > 0 ? cfg.AdvWindow : 20;
+                double sum = 0;
+                int cnt = 0;
+                for (int i = Math.Max(0, t - w); i < t; i++)
+                {
+                    if (s.MainVol[i] != null) { sum += s.MainVol[i].Value; cnt++; }
+                }
+                return cnt > 0 ? sum / cnt : 0;
+            }
+
+            double LegCost(string code, int t, Variety meta, double price, int lots)
+            {
+                double c = cfg.CommissionRate * price * meta.Mult * lots + cfg.SlippageTicks * meta.TickValue * lots;
+                if (cfg.ImpactCoef > 0)
+                {
+                    double adv = AdvLots(code, t);
+                    if (adv > 0)
+                    {
+                        c += cfg.ImpactCoef * price * meta.Mult * lots * Math.Sqrt(lots / adv);
+                    }
+                }
+                return c;
+            }
 
             (double floating, double margin, double gross, double equity, double avail) Stats(int t)
             {
@@ -162,7 +190,7 @@ namespace MockTrader.Core
                     double adjP = s.MainAdj[li].Value;
                     double rawP = s.MainRaw[li] != null ? s.MainRaw[li].Value : pos.EntryRaw;
                     double pnl = pos.Dir * (adjP - pos.EntryAdj) * meta.Mult * pos.Lots;
-                    double cost = LegCost(meta, rawP, pos.Lots);
+                    double cost = LegCost(code, t, meta, rawP, pos.Lots);
                     cash += pnl - cost;
                     trades.Add(new Trade { Date = date, Code = code, Side = "close", Dir = pos.Dir, Lots = pos.Lots, Price = rawP, AdjPrice = adjP, Notional = rawP * meta.Mult * pos.Lots, Cost = cost, Pnl = pnl, Contract = pos.Contract, Reason = "delist" });
                     positions.Remove(code);
@@ -179,7 +207,7 @@ namespace MockTrader.Core
                         var meta = ds.GetMeta(code);
                         double oldRaw = roll.FromClose ?? pos.EntryRaw;
                         double newRaw = roll.ToClose ?? pos.EntryRaw;
-                        double cost = LegCost(meta, oldRaw, pos.Lots) + LegCost(meta, newRaw, pos.Lots);
+                        double cost = LegCost(code, t, meta, oldRaw, pos.Lots) + LegCost(code, t, meta, newRaw, pos.Lots);
                         cash -= cost;
                         pos.Contract = roll.To;
                         pos.EntryRaw = newRaw;
@@ -202,7 +230,7 @@ namespace MockTrader.Core
                 if (targetLots == 0)
                 {
                     double pnl = curDir * (adjT - cur.EntryAdj) * meta.Mult * curLots;
-                    double cost = LegCost(meta, rawT, curLots);
+                    double cost = LegCost(code, t, meta, rawT, curLots);
                     cash += pnl - cost;
                     trades.Add(new Trade { Date = date, Code = code, Side = "close", Dir = curDir, Lots = curLots, Price = rawT, AdjPrice = adjT, Notional = rawT * meta.Mult * curLots, Cost = cost, Pnl = pnl, Contract = cur.Contract, Reason = "rebalance" });
                     positions.Remove(code);
@@ -210,7 +238,7 @@ namespace MockTrader.Core
                 }
                 if (curLots == 0)
                 {
-                    double cost = LegCost(meta, rawT, targetLots);
+                    double cost = LegCost(code, t, meta, rawT, targetLots);
                     cash -= cost;
                     positions[code] = new Position { Lots = targetLots, Dir = targetDir, EntryAdj = adjT, EntryRaw = rawT, Contract = targetContract };
                     trades.Add(new Trade { Date = date, Code = code, Side = "open", Dir = targetDir, Lots = targetLots, Price = rawT, AdjPrice = adjT, Notional = rawT * meta.Mult * targetLots, Cost = cost, Pnl = 0, Contract = targetContract, Reason = "rebalance" });
@@ -221,7 +249,7 @@ namespace MockTrader.Core
                     if (targetLots > curLots)
                     {
                         int add = targetLots - curLots;
-                        double cost = LegCost(meta, rawT, add);
+                        double cost = LegCost(code, t, meta, rawT, add);
                         cash -= cost;
                         positions[code] = new Position { Lots = targetLots, Dir = targetDir, EntryAdj = (cur.Lots * cur.EntryAdj + add * adjT) / targetLots, EntryRaw = (cur.Lots * cur.EntryRaw + add * rawT) / targetLots, Contract = targetContract };
                         trades.Add(new Trade { Date = date, Code = code, Side = "add", Dir = targetDir, Lots = add, Price = rawT, AdjPrice = adjT, Notional = rawT * meta.Mult * add, Cost = cost, Pnl = 0, Contract = targetContract, Reason = "rebalance" });
@@ -230,7 +258,7 @@ namespace MockTrader.Core
                     {
                         int close = curLots - targetLots;
                         double pnl = curDir * (adjT - cur.EntryAdj) * meta.Mult * close;
-                        double cost = LegCost(meta, rawT, close);
+                        double cost = LegCost(code, t, meta, rawT, close);
                         cash += pnl - cost;
                         positions[code] = new Position { Lots = targetLots, Dir = targetDir, EntryAdj = cur.EntryAdj, EntryRaw = cur.EntryRaw, Contract = targetContract };
                         trades.Add(new Trade { Date = date, Code = code, Side = "reduce", Dir = curDir, Lots = close, Price = rawT, AdjPrice = adjT, Notional = rawT * meta.Mult * close, Cost = cost, Pnl = pnl, Contract = cur.Contract, Reason = "rebalance" });
@@ -238,8 +266,8 @@ namespace MockTrader.Core
                     return;
                 }
                 double pnlClose = curDir * (adjT - cur.EntryAdj) * meta.Mult * curLots;
-                double costClose = LegCost(meta, rawT, curLots);
-                double costOpen = LegCost(meta, rawT, targetLots);
+                double costClose = LegCost(code, t, meta, rawT, curLots);
+                double costOpen = LegCost(code, t, meta, rawT, targetLots);
                 cash += pnlClose - costClose - costOpen;
                 positions[code] = new Position { Lots = targetLots, Dir = targetDir, EntryAdj = adjT, EntryRaw = rawT, Contract = targetContract };
                 trades.Add(new Trade { Date = date, Code = code, Side = "flip", Dir = curDir, Lots = curLots, LotsNew = targetLots, DirLabel = curDir + "->" + targetDir, Price = rawT, AdjPrice = adjT, Notional = rawT * meta.Mult * (curLots + targetLots), Cost = costClose + costOpen, Pnl = pnlClose, Contract = targetContract, Reason = "rebalance" });
@@ -293,6 +321,8 @@ namespace MockTrader.Core
             }
 
             var rebSet = new HashSet<string>(strategy.RebalanceDates);
+            double peakEquity = cfg.InitialCapital;
+            bool circuitBroken = false;
             for (int t = 0; t < T; t++)
             {
                 string date = dates[t];
@@ -303,7 +333,7 @@ namespace MockTrader.Core
                     ExecuteRebalance(t, date, pending.Value.targets);
                     pending = null;
                 }
-                if (rebSet.Contains(date) && pending == null)
+                if (rebSet.Contains(date) && pending == null && !circuitBroken)
                 {
                     int execIdx = Math.Min(t + (cfg.ExecutionDelay > 0 ? cfg.ExecutionDelay : 1), T - 1);
                     var tg = strategy.Targets.TryGetValue(date, out var tmap) ? tmap : new Dictionary<string, double>();
@@ -317,6 +347,17 @@ namespace MockTrader.Core
                     UsedMargin = st2.margin, Available = st2.avail, GrossNotional = st2.gross,
                     Nav = st2.equity / cfg.InitialCapital, NPositions = positions.Count
                 };
+
+                if (st2.equity > peakEquity) { peakEquity = st2.equity; }
+                if (!circuitBroken && cfg.DrawdownCutoff > 0)
+                {
+                    double dd = peakEquity > 0 ? (peakEquity - st2.equity) / peakEquity : 0;
+                    if (dd >= cfg.DrawdownCutoff)
+                    {
+                        foreach (var code in positions.Keys.ToList()) { TradeTo(date, t, code, 0, 0, null); }
+                        circuitBroken = true;
+                    }
+                }
             }
 
             double totalCost = trades.Sum(x => x.Cost);
@@ -327,7 +368,7 @@ namespace MockTrader.Core
                 Summary = new BacktestSummary
                 {
                     InitialCapital = cfg.InitialCapital, FinalEquity = equityArr[T - 1],
-                    TotalCost = totalCost, TotalRollCost = totalRollCost, NTrades = trades.Count, NRolls = rolls.Count
+                    TotalCost = totalCost, TotalRollCost = totalRollCost, NTrades = trades.Count, NRolls = rolls.Count, CircuitBroken = circuitBroken
                 }
             };
         }

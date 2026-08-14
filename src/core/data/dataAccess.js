@@ -7,7 +7,7 @@
 import { METADATA, METADATA_BY_CODE } from './metadata.js';
 import { generateVariety, deliveryISO } from './synthetic.js';
 import { continuousSeries, maxAbsReturn } from './roll.js';
-import { tradingDates } from '../utils.js';
+import { tradingDates, stringSeed } from '../utils.js';
 
 /** 从合约代码解析交割月（依赖品种代码前缀） */
 export function parseContractCode(varietyCode, contractCode) {
@@ -58,6 +58,21 @@ export class DataAccess {
 
   get datesCount() {
     return this.dates.length;
+  }
+
+  /** 数据版本指纹：同数据 → 同指纹，用于回测审计头（schema + 区间 + 品种 + 采样收盘价） */
+  dataFingerprint() {
+    const codes = this.codes.join(',');
+    const samples = [];
+    for (const code of this.codes.slice(0, 12)) {
+      const s = this.getSeries(code);
+      if (!s) { continue; }
+      for (let i = 0; i < s.dates.length; i += 60) {
+        if (s.mainRaw[i] != null) { samples.push(s.mainRaw[i].toFixed(4)); }
+      }
+    }
+    const seedStr = `schema:v1|${ this.dates[0] || '' }|${ this.dates[this.dates.length - 1] || '' }|${ this.dates.length }|${ codes }|${ samples.join(',')}`;
+    return stringSeed(seedStr).toString(16);
   }
 
   /** 品种元数据 */

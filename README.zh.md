@@ -2,11 +2,11 @@
 
 [English](README.md) | **简体中文**
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%3E%3D18-339933.svg)](package.json)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](cs/)
-[![Test](https://img.shields.io/badge/test-28%20passed-brightgreen.svg)](test/)
+[![Test](https://img.shields.io/badge/test-37%20passed-brightgreen.svg)](test/)
 [![CI](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml/badge.svg)](https://github.com/Misaka4396/MockTrader/actions/workflows/ci.yml)
 
 中国商品期货 **多合约 + 展期收益率 + 多空组合** 因子回测系统（方案 B），对比纳指长线收益率（单值基准）。
@@ -16,6 +16,10 @@ C# 每个 dll 职责与 JS 模块一一对应，同一确定性种子下**逐位
 **v1.2.0（方案 A 实战化）**：新增 Python 真实数据采集层（TQSDK/AkShare 行情、新浪/金十/财联社新闻）、
 **新闻情绪因子**（指数衰减 × 一致性折减，无未来函数）、**趋势预测**（日线因子 + 新闻情绪 → 多空/中性）、
 盘中 30 分钟调度与信号归档；Web 与 WPF 均展示实时行情/新闻状态。
+
+**v1.3.0（Phase 1-3）**：研究可信度（**样本外分割 + Walk-forward**、数据版本指纹、多源交叉校验、冲击成本模型、前视审计）、
+研究深度（alphalens 式**因子分析流水线**、**组合优化**、**VaR/CVaR 风控**、回撤熔断、因子注册表）、
+实盘准备（前向**纸面验证账本**、钉钉/企微告警、调度监控、CTP 模拟盘骨架）——JS 与 C# 双实现镜像同步。
 
 > ⚠️ 回测核心默认使用确定性种子合成的模拟行情，**不代表真实收益**，仅用于验证算法正确性；
 > 真实行情/新闻由 `py/` 脚本采集，新闻时间戳与回测区间不重叠，新闻增量 alpha 需前向纸面验证后再使用。
@@ -45,11 +49,14 @@ C# 每个 dll 职责与 JS 模块一一对应，同一确定性种子下**逐位
 | 📰 新闻情绪 S9 | 新闻情绪因子：指数时间衰减加权 × 一致性折减、按品种 tag 过滤、**无未来函数**；与 5 因子同口径 winsorize+z-score；C# `NewsSentiment.cs` 镜像实现 |
 | 🔮 趋势预测 S10 | `trendScore = wDaily·dailyZ + wNews·newsZ`（默认 1:0.6，阈值 0.3）→ 多空/中性；滚动回测三模式（合成/真实/对照） |
 | 🐍 Python 采集 S11 | 行情采集（TQSDK 全合约，AkShare 回退）、新闻采集（新浪 7x24/金十 flash/财联社电报）、词典+可选 LLM 打标、APScheduler 盘中 30min 调度、信号归档 JSONL |
+| 🔬 研究平台 S12 | alphalens 式因子分析（分层收益/IC 衰减/换手/相关性矩阵/Gram-Schmidt 正交化）、因子注册表、样本外分割 + Walk-forward + 参数稳健性网格、数据指纹、前视审计 |
+| 🛡️ 风控 S13 | 历史 VaR/CVaR/最大回撤/压力测试；逆波动率 & 等风险贡献组合加权 + 板块暴露上限；回撤熔断（可选，默认关闭） |
+| 🚀 实盘准备 S14 | 前向纸面验证账本（记录→结算→命中率统计）、钉钉/企微告警、调度心跳与数据新鲜度监控、CTP 模拟盘骨架 |
 
 ## 快速开始
 
 ```bash
-npm test                       # 28 项单元测试（S1-S5 + 新闻/趋势）
+npm test                       # 37 项单元测试（S1-S5 + 新闻/趋势 + 研究/风控/组合/纸面）
 npm run lint                   # ESLint 质量检查
 npm run format                 # Prettier 格式化
 npm run build:web              # 打包为 dist/index.html
@@ -69,6 +76,21 @@ node tools/predict.mjs         # 趋势信号 → data/signals/latest.json + his
 python py/scheduler.py         # 长期运行：8:45 采行情；盘中每 30min 新闻→打标→预测
 node tools/rolling_backtest.mjs [synthetic|real|both]   # 新闻因子增量 alpha 验证
 node tools/news_history.mjs    # 情绪历史回看
+```
+
+## 研究与风控工具（v1.3.0）
+
+```bash
+node tools/walkforward.mjs        # 样本外分割 + 参数网格 + Walk-forward
+node tools/factor_report.mjs      # 因子研究报告（分层/IC 衰减/换手/相关性/正交化）
+node tools/risk_report.mjs        # VaR / CVaR / 回撤 / 压力测试
+node tools/portfolio_demo.mjs     # 等权 vs 逆波动率 vs 板块上限对比
+node tools/lookahead_audit.mjs    # 真实数据路径无前视审计
+node tools/impact_check.mjs       # 冲击成本模型对期末权益的影响
+node tools/paper_trading.mjs      # 前向纸面验证（命中率统计）
+python py/verify_sources.py       # TQSDK vs AkShare 多源交叉校验
+python py/monitor.py              # 调度心跳 + 数据新鲜度监控
+python py/alert.py                # 钉钉 / 企微告警推送
 ```
 
 ## 原生 exe+dll（S8）
@@ -91,18 +113,21 @@ release\MockTrader.exe
 ```text
 src/core/          可移植核心（纯函数 ESM，Node 可测、浏览器可打包）
   index.js         公共 API 桶 + runPipeline 一键流水线
-  data/            S1：metadata / synthetic / roll / dataAccess（+ loadMarketData）
+  data/            S1：metadata / synthetic / roll / dataAccess（+ loadMarketData、dataFingerprint）
   factors/         S2：factorEngine · S9：newsSentiment
   strategy/        S3：strategyEngine
-  backtest/        S4：backtestEngine
+  backtest/        S4：backtestEngine（+ 冲击成本、回撤熔断）
   performance/     S5：performanceEngine
   trend/           S10：trendPredictor
+  research/        S12：factorAnalysis / paperLedger
+  risk/            S13：risk（VaR / CVaR / 压力）
+  portfolio/       S13：optimizer（逆波动率 / ERC / 板块上限）
 src/web/           薄 GUI（S6/S7）：app.js / chart.js / worker.js / styles.css / template.html
-cs/                S8 原生 C# 版：DataAccess / StrategyCore（含 NewsSentiment）/ MockTrader（WPF）
-py/                S11 Python 层：collect_quotes / collect_news / collect_jin10 / collect_cls / sentiment / scheduler
-test/              28 项单元测试（零依赖运行器）+ 冒烟脚本
-tools/             build-web / smoke / persist / predict / rolling_backtest / news_history / demo_planA
-docs/              设计文档 01-10（架构/数据/因子/策略/会计/绩效/基准/exe-dll/升级方案/方案A实现）
+cs/                S8 原生 C# 版：DataAccess / StrategyCore（NewsSentiment、冲击、熔断）/ MockTrader（WPF）
+py/                S11/S14 Python 层：collect_* / sentiment / scheduler / verify_sources / monitor / alert / ctp_paper
+test/              37 项单元测试（零依赖运行器）+ 冒烟脚本
+tools/             build-web / smoke / persist / predict / rolling_backtest / news_history / walkforward / factor_report / risk_report / portfolio_demo / lookahead_audit / impact_check / paper_trading / demo_planA
+docs/              设计文档 01-13（架构/数据/因子/策略/会计/绩效/基准/exe-dll/升级方案/方案A/路线图/Phase2/Phase3）
 data/              本地数据：manifest / metadata / continuous + market / news / signals（真实数据）
 dist/              可分发产物：index.html（离线自包含）+ mocktrader.js（UMD）
 release/           原生 exe+dll 产物（由 Release 附件分发，不入库）
@@ -137,6 +162,11 @@ release/           原生 exe+dll 产物（由 Release 附件分发，不入库�
 | 新闻因子符号正确/无未来函数/tag 过滤/衰减 | NewsSentimentEngine + test-news（7 项） |
 | 趋势融合得分与方向判定 | TrendPredictor + test-news |
 | 新闻因子增量 alpha 可度量 | rolling_backtest 三模式（合成 IC 59.79% / alpha +6.08pp） |
+| 因子分析流水线（分层/IC 衰减/换手/相关/正交） | factorAnalysis + test-research（5 项） |
+| 风控指标（VaR/CVaR/压力）与回撤熔断 | risk.js + backtest drawdownCutoff + 测试 |
+| 组合优化（逆波动率/ERC/板块上限） | portfolio optimizer + 测试 |
+| 样本外/Walk-forward 度量框架 | tools/walkforward.mjs（4/5 窗口 OOS 为正） |
+| 前向纸面验证 | PaperLedger + paper_trading.mjs（3942 笔预测） |
 | 基准可配置、口径备注 | perfConfig.benchmarkAnnual + docs/06/07 |
 | exe 薄 / 逻辑在 dll / 可分发 | 核心在 JS 模块，GUI 只调 runPipeline；dist/index.html 单文件分发 |
 

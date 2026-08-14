@@ -68,3 +68,7 @@ JIN10_SECRET = os.environ.get('JIN10_SECRET', '')
 CLS_TOKEN = os.environ.get('CLS_TOKEN', '')
 CLS_API_BASE = 'https://www.cls.cn'
 
+# 告警 webhook（钉钉/企业微信机器人）
+ALERT_DINGTALK_URL = os.environ.get('ALERT_DINGTALK_URL', '')
+ALERT_WECOM_URL = os.environ.get('ALERT_WECOM_URL', '')
+

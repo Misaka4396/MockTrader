@@ -28,6 +28,7 @@ await import('./test-strategy.mjs');
 await import('./test-backtest.mjs');
 await import('./test-performance.mjs');
 await import('./test-news.mjs');
+await import('./test-research.mjs');
 
 let pass = 0;
 const fails = [];

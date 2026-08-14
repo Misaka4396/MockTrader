@@ -36,7 +36,14 @@ import {
   DEFAULT_BENCHMARK,
   DEFAULT_PERF_CONFIG,
 } from './performance/performanceEngine.js';
-import { SECTORS, FACTOR_KEYS, FACTOR_NAMES, DIRECTION, EXCHANGES } from './types.js';
+import {
+  SECTORS,
+  FACTOR_KEYS,
+  FACTOR_NAMES,
+  FACTOR_REGISTRY,
+  DIRECTION,
+  EXCHANGES,
+} from './types.js';
 import {
   stringSeed,
   mulberry32,
@@ -78,6 +85,24 @@ import {
   DEFAULT_LEAN,
 } from './factors/newsSentiment.js';
 import { TrendPredictor } from './trend/trendPredictor.js';
+import {
+  forwardReturns,
+  quantileReturns,
+  icSeries,
+  icDecay,
+  topTurnover,
+  factorCorrelation,
+  orthogonalize,
+} from './research/factorAnalysis.js';
+import { PaperLedger } from './research/paperLedger.js';
+import {
+  dailyReturns,
+  historicalVaR,
+  expectedShortfall,
+  maxDrawdown,
+  stressTest,
+} from './risk/risk.js';
+import { inverseVolWeights, riskParityWeights, capSectorExposure } from './portfolio/optimizer.js';
 
 /** 一键端到端流水线（数据 -> 因子 -> 策略 -> 回测 -> 绩效），供 GUI/Worker 调用。 */
 function runPipeline(options = {}) {
@@ -159,9 +184,26 @@ export {
   generateMockNews,
   DEFAULT_LEAN,
   TrendPredictor,
+  forwardReturns,
+  quantileReturns,
+  icSeries,
+  icDecay,
+  topTurnover,
+  factorCorrelation,
+  orthogonalize,
+  PaperLedger,
+  dailyReturns,
+  historicalVaR,
+  expectedShortfall,
+  maxDrawdown,
+  stressTest,
+  inverseVolWeights,
+  riskParityWeights,
+  capSectorExposure,
   SECTORS,
   FACTOR_KEYS,
   FACTOR_NAMES,
+  FACTOR_REGISTRY,
   DIRECTION,
   EXCHANGES,
   stringSeed,

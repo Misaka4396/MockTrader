@@ -12,6 +12,9 @@ export const DEFAULT_BACKTEST_CONFIG = {
   executionDelay: 1, // 成交延迟（交易日）：1 = 次日收盘成交
   maxLeverage: 1.5, // 总保证金 / 权益 上限
   useAdjPrice: true, // 盈亏按后复权主连续价（消除展期跳空）
+  impactCoef: 0, // 冲击成本系数（平方根模型，0=关闭，保持逐位一致）
+  advWindow: 20, // 冲击成本的日均成交量窗口
+  drawdownCutoff: 0, // 回撤熔断阈值（0=关闭；如 0.2 = 回撤 20% 时全部平仓）
 };
 
 export class BacktestEngine {
@@ -59,9 +62,36 @@ export class BacktestEngine {
     const snapshots = new Array(T).fill(null);
 
     let pending = null; // {execIdx, targets}
+    let peakEquity = cfg.initialCapital;
+    let circuitBroken = false;
 
-    const legCost = (meta, price, lots) =>
-      cfg.commissionRate * price * meta.mult * lots + cfg.slippageTicks * meta.tickValue * lots;
+    // 日均成交量（过去 advWindow 日，严格历史，无前视）
+    const advLots = (code, t) => {
+      const s = S(code);
+      const w = cfg.advWindow || 20;
+      let sum = 0;
+      let cnt = 0;
+      for (let i = Math.max(0, t - w); i < t; i++) {
+        if (s.mainVol[i] != null) {
+          sum += s.mainVol[i];
+          cnt++;
+        }
+      }
+      return cnt > 0 ? sum / cnt : 0;
+    };
+
+    // 成本 = 手续费 + 滑点 + 冲击（平方根模型，可选）
+    const legCost = (code, t, meta, price, lots) => {
+      let c =
+        cfg.commissionRate * price * meta.mult * lots + cfg.slippageTicks * meta.tickValue * lots;
+      if (cfg.impactCoef > 0) {
+        const adv = advLots(code, t);
+        if (adv > 0) {
+          c += cfg.impactCoef * price * meta.mult * lots * Math.sqrt(lots / adv);
+        }
+      }
+      return c;
+    };
 
     // 计算当前浮动盈亏 / 权益 / 保证金占用 / 可用资金
     const stats = (t) => {
@@ -103,7 +133,7 @@ export class BacktestEngine {
         const adjP = s.mainAdj[li];
         const rawP = s.mainRaw[li] != null ? s.mainRaw[li] : pos.entryRaw;
         const pnl = pos.dir * (adjP - pos.entryAdj) * meta.mult * pos.lots;
-        const cost = legCost(meta, rawP, pos.lots);
+        const cost = legCost(code, t, meta, rawP, pos.lots);
         cash += pnl - cost;
         trades.push({
           date,
@@ -134,7 +164,8 @@ export class BacktestEngine {
         const meta = metaOf(code);
         const oldRaw = roll.fromClose != null ? roll.fromClose : pos.entryRaw;
         const newRaw = roll.toClose != null ? roll.toClose : pos.entryRaw;
-        const cost = legCost(meta, oldRaw, pos.lots) + legCost(meta, newRaw, pos.lots);
+        const cost =
+          legCost(code, t, meta, oldRaw, pos.lots) + legCost(code, t, meta, newRaw, pos.lots);
         cash -= cost;
         pos.contract = roll.to;
         pos.entryRaw = newRaw;
@@ -157,7 +188,7 @@ export class BacktestEngine {
       }
       if (targetLots === 0) {
         const pnl = curDir * (adjT - cur.entryAdj) * meta.mult * curLots;
-        const cost = legCost(meta, rawT, curLots);
+        const cost = legCost(code, t, meta, rawT, curLots);
         cash += pnl - cost;
         trades.push({
           date,
@@ -177,7 +208,7 @@ export class BacktestEngine {
         return;
       }
       if (curLots === 0) {
-        const cost = legCost(meta, rawT, targetLots);
+        const cost = legCost(code, t, meta, rawT, targetLots);
         cash -= cost;
         positions[code] = {
           lots: targetLots,
@@ -205,7 +236,7 @@ export class BacktestEngine {
       if (curDir === targetDir) {
         if (targetLots > curLots) {
           const add = targetLots - curLots;
-          const cost = legCost(meta, rawT, add);
+          const cost = legCost(code, t, meta, rawT, add);
           cash -= cost;
           positions[code] = {
             lots: targetLots,
@@ -231,7 +262,7 @@ export class BacktestEngine {
         } else if (targetLots < curLots) {
           const close = curLots - targetLots;
           const pnl = curDir * (adjT - cur.entryAdj) * meta.mult * close;
-          const cost = legCost(meta, rawT, close);
+          const cost = legCost(code, t, meta, rawT, close);
           cash += pnl - cost;
           positions[code] = {
             lots: targetLots,
@@ -259,8 +290,8 @@ export class BacktestEngine {
       }
       // 方向翻转
       const pnlClose = curDir * (adjT - cur.entryAdj) * meta.mult * curLots;
-      const costClose = legCost(meta, rawT, curLots);
-      const costOpen = legCost(meta, rawT, targetLots);
+      const costClose = legCost(code, t, meta, rawT, curLots);
+      const costOpen = legCost(code, t, meta, rawT, targetLots);
       cash += pnlClose - costClose - costOpen;
       positions[code] = {
         lots: targetLots,
@@ -348,8 +379,8 @@ export class BacktestEngine {
         executeRebalance(t, date, pending.targets);
         pending = null;
       }
-      // 4) 计划新调仓（信号 t 日生成，t+delay 成交）
-      if (rebSet.has(date) && !pending) {
+      // 4) 计划新调仓（信号 t 日生成，t+delay 成交；熔断后停止）
+      if (rebSet.has(date) && !pending && !circuitBroken) {
         const execIdx = Math.min(t + (cfg.executionDelay || 1), T - 1);
         pending = { execIdx, targets: strategy.targets[date] || {} };
       }
@@ -368,6 +399,20 @@ export class BacktestEngine {
         nav: st.equity / cfg.initialCapital,
         nPositions: Object.keys(positions).length,
       };
+
+      // 6) 回撤熔断（可选）：回撤超阈值则全部平仓
+      if (st.equity > peakEquity) {
+        peakEquity = st.equity;
+      }
+      if (!circuitBroken && cfg.drawdownCutoff > 0) {
+        const dd = peakEquity > 0 ? (peakEquity - st.equity) / peakEquity : 0;
+        if (dd >= cfg.drawdownCutoff) {
+          for (const code of Object.keys(positions)) {
+            tradeTo(date, t, code, 0, 0, null);
+          }
+          circuitBroken = true;
+        }
+      }
     }
 
     const final = stats(T - 1);
@@ -388,6 +433,7 @@ export class BacktestEngine {
         totalRollCost,
         nTrades: trades.length,
         nRolls: rolls.length,
+        circuitBroken,
       },
     };
   }

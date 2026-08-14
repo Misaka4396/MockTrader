@@ -16,15 +16,23 @@ __def("index", function(__req, __exports) {
   const { StrategyEngine, DEFAULT_STRATEGY_CONFIG, compositeScores, factorWeights, computeRollingIC } = __req("strategy/strategyEngine");
   const { BacktestEngine, DEFAULT_BACKTEST_CONFIG } = __req("backtest/backtestEngine");
   const { PerformanceEngine, DEFAULT_BENCHMARK, DEFAULT_PERF_CONFIG } = __req("performance/performanceEngine");
-  const { SECTORS, FACTOR_KEYS, FACTOR_NAMES, DIRECTION, EXCHANGES } = __req("types");
+  const { SECTORS, FACTOR_KEYS, FACTOR_NAMES, FACTOR_REGISTRY, DIRECTION, EXCHANGES } = __req("types");
   const { stringSeed, mulberry32, rngFromString, randn, parseISO, fmtISO, addDays, diffDays, isWeekday, tradingDates, inRange, sum, mean, variance, std, percentile, median, zscore, rank, pearson, spearman, winsorize, rollingMean, rollingStd, last, clamp, roundTo, deepClone, meanOfMap } = __req("utils");
   const { NewsSentimentEngine, sentimentFactor, parseTs, labelToScore, dailySentimentByDate, generateMockNews, DEFAULT_LEAN } = __req("factors/newsSentiment");
   const { TrendPredictor } = __req("trend/trendPredictor");
+  const { forwardReturns, quantileReturns, icSeries, icDecay, topTurnover, factorCorrelation, orthogonalize } = __req("research/factorAnalysis");
+  const { PaperLedger } = __req("research/paperLedger");
+  const { dailyReturns, historicalVaR, expectedShortfall, maxDrawdown, stressTest } = __req("risk/risk");
+  const { inverseVolWeights, riskParityWeights, capSectorExposure } = __req("portfolio/optimizer");
 /**
  * index.js — 公共 API 桶 (portable core 入口)。
  * 对应 C# 架构：DataAccess.dll / FactorEngine / StrategyEngine / BacktestEngine / PerformanceEngine。
  * 约定：仅命名导出（末尾单条 export { ... }），无 export *，便于打包器处理。
  */
+
+
+
+
 
 
 
@@ -80,13 +88,13 @@ function runPipeline(options = {}) {
 
 
 
-  Object.assign(__exports, { DataAccess, parseContractCode, METADATA, METADATA_BY_CODE, getMeta, BY_SECTOR, generateVariety, SECTOR_SIM_DEFAULT, SIM_OVERRIDES, simParams, contractCode, deliveryISO, continuousSeries, buildMainSub, backAdjustFactors, maxAbsReturn, FactorEngine, DEFAULT_FACTOR_PARAMS, FACTOR_SIGNS, skewness, computeVarietyFactors, crossSectionalZ, StrategyEngine, DEFAULT_STRATEGY_CONFIG, compositeScores, factorWeights, computeRollingIC, BacktestEngine, DEFAULT_BACKTEST_CONFIG, PerformanceEngine, DEFAULT_BENCHMARK, DEFAULT_PERF_CONFIG, NewsSentimentEngine, sentimentFactor, parseTs, labelToScore, dailySentimentByDate, generateMockNews, DEFAULT_LEAN, TrendPredictor, SECTORS, FACTOR_KEYS, FACTOR_NAMES, DIRECTION, EXCHANGES, stringSeed, mulberry32, rngFromString, randn, parseISO, fmtISO, addDays, diffDays, isWeekday, tradingDates, inRange, sum, mean, variance, std, percentile, median, zscore, rank, pearson, spearman, winsorize, rollingMean, rollingStd, last, clamp, roundTo, deepClone, meanOfMap, runPipeline });
+  Object.assign(__exports, { DataAccess, parseContractCode, METADATA, METADATA_BY_CODE, getMeta, BY_SECTOR, generateVariety, SECTOR_SIM_DEFAULT, SIM_OVERRIDES, simParams, contractCode, deliveryISO, continuousSeries, buildMainSub, backAdjustFactors, maxAbsReturn, FactorEngine, DEFAULT_FACTOR_PARAMS, FACTOR_SIGNS, skewness, computeVarietyFactors, crossSectionalZ, StrategyEngine, DEFAULT_STRATEGY_CONFIG, compositeScores, factorWeights, computeRollingIC, BacktestEngine, DEFAULT_BACKTEST_CONFIG, PerformanceEngine, DEFAULT_BENCHMARK, DEFAULT_PERF_CONFIG, NewsSentimentEngine, sentimentFactor, parseTs, labelToScore, dailySentimentByDate, generateMockNews, DEFAULT_LEAN, TrendPredictor, forwardReturns, quantileReturns, icSeries, icDecay, topTurnover, factorCorrelation, orthogonalize, PaperLedger, dailyReturns, historicalVaR, expectedShortfall, maxDrawdown, stressTest, inverseVolWeights, riskParityWeights, capSectorExposure, SECTORS, FACTOR_KEYS, FACTOR_NAMES, FACTOR_REGISTRY, DIRECTION, EXCHANGES, stringSeed, mulberry32, rngFromString, randn, parseISO, fmtISO, addDays, diffDays, isWeekday, tradingDates, inRange, sum, mean, variance, std, percentile, median, zscore, rank, pearson, spearman, winsorize, rollingMean, rollingStd, last, clamp, roundTo, deepClone, meanOfMap, runPipeline });
 });
 __def("data/dataAccess", function(__req, __exports) {
   const { METADATA, METADATA_BY_CODE } = __req("data/metadata");
   const { generateVariety, deliveryISO } = __req("data/synthetic");
   const { continuousSeries, maxAbsReturn } = __req("data/roll");
-  const { tradingDates } = __req("utils");
+  const { tradingDates, stringSeed } = __req("utils");
 /**
  * dataAccess.js — 数据访问层 (S1: DataAccess "dll")。
  * 纯内存 + 可导出快照（JSON），不依赖 Node fs，便于浏览器/Node 复用；
@@ -147,6 +155,21 @@ class DataAccess {
 
   get datesCount() {
     return this.dates.length;
+  }
+
+  /** 数据版本指纹：同数据 → 同指纹，用于回测审计头（schema + 区间 + 品种 + 采样收盘价） */
+  dataFingerprint() {
+    const codes = this.codes.join(',');
+    const samples = [];
+    for (const code of this.codes.slice(0, 12)) {
+      const s = this.getSeries(code);
+      if (!s) { continue; }
+      for (let i = 0; i < s.dates.length; i += 60) {
+        if (s.mainRaw[i] != null) { samples.push(s.mainRaw[i].toFixed(4)); }
+      }
+    }
+    const seedStr = `schema:v1|${ this.dates[0] || '' }|${ this.dates[this.dates.length - 1] || '' }|${ this.dates.length }|${ codes }|${ samples.join(',')}`;
+    return stringSeed(seedStr).toString(16);
   }
 
   /** 品种元数据 */
@@ -1568,6 +1591,9 @@ const DEFAULT_BACKTEST_CONFIG = {
   executionDelay: 1, // 成交延迟（交易日）：1 = 次日收盘成交
   maxLeverage: 1.5, // 总保证金 / 权益 上限
   useAdjPrice: true, // 盈亏按后复权主连续价（消除展期跳空）
+  impactCoef: 0, // 冲击成本系数（平方根模型，0=关闭，保持逐位一致）
+  advWindow: 20, // 冲击成本的日均成交量窗口
+  drawdownCutoff: 0, // 回撤熔断阈值（0=关闭；如 0.2 = 回撤 20% 时全部平仓）
 };
 
 class BacktestEngine {
@@ -1615,9 +1641,36 @@ class BacktestEngine {
     const snapshots = new Array(T).fill(null);
 
     let pending = null; // {execIdx, targets}
+    let peakEquity = cfg.initialCapital;
+    let circuitBroken = false;
 
-    const legCost = (meta, price, lots) =>
-      cfg.commissionRate * price * meta.mult * lots + cfg.slippageTicks * meta.tickValue * lots;
+    // 日均成交量（过去 advWindow 日，严格历史，无前视）
+    const advLots = (code, t) => {
+      const s = S(code);
+      const w = cfg.advWindow || 20;
+      let sum = 0;
+      let cnt = 0;
+      for (let i = Math.max(0, t - w); i < t; i++) {
+        if (s.mainVol[i] != null) {
+          sum += s.mainVol[i];
+          cnt++;
+        }
+      }
+      return cnt > 0 ? sum / cnt : 0;
+    };
+
+    // 成本 = 手续费 + 滑点 + 冲击（平方根模型，可选）
+    const legCost = (code, t, meta, price, lots) => {
+      let c =
+        cfg.commissionRate * price * meta.mult * lots + cfg.slippageTicks * meta.tickValue * lots;
+      if (cfg.impactCoef > 0) {
+        const adv = advLots(code, t);
+        if (adv > 0) {
+          c += cfg.impactCoef * price * meta.mult * lots * Math.sqrt(lots / adv);
+        }
+      }
+      return c;
+    };
 
     // 计算当前浮动盈亏 / 权益 / 保证金占用 / 可用资金
     const stats = (t) => {
@@ -1659,7 +1712,7 @@ class BacktestEngine {
         const adjP = s.mainAdj[li];
         const rawP = s.mainRaw[li] != null ? s.mainRaw[li] : pos.entryRaw;
         const pnl = pos.dir * (adjP - pos.entryAdj) * meta.mult * pos.lots;
-        const cost = legCost(meta, rawP, pos.lots);
+        const cost = legCost(code, t, meta, rawP, pos.lots);
         cash += pnl - cost;
         trades.push({
           date,
@@ -1690,7 +1743,8 @@ class BacktestEngine {
         const meta = metaOf(code);
         const oldRaw = roll.fromClose != null ? roll.fromClose : pos.entryRaw;
         const newRaw = roll.toClose != null ? roll.toClose : pos.entryRaw;
-        const cost = legCost(meta, oldRaw, pos.lots) + legCost(meta, newRaw, pos.lots);
+        const cost =
+          legCost(code, t, meta, oldRaw, pos.lots) + legCost(code, t, meta, newRaw, pos.lots);
         cash -= cost;
         pos.contract = roll.to;
         pos.entryRaw = newRaw;
@@ -1713,7 +1767,7 @@ class BacktestEngine {
       }
       if (targetLots === 0) {
         const pnl = curDir * (adjT - cur.entryAdj) * meta.mult * curLots;
-        const cost = legCost(meta, rawT, curLots);
+        const cost = legCost(code, t, meta, rawT, curLots);
         cash += pnl - cost;
         trades.push({
           date,
@@ -1733,7 +1787,7 @@ class BacktestEngine {
         return;
       }
       if (curLots === 0) {
-        const cost = legCost(meta, rawT, targetLots);
+        const cost = legCost(code, t, meta, rawT, targetLots);
         cash -= cost;
         positions[code] = {
           lots: targetLots,
@@ -1761,7 +1815,7 @@ class BacktestEngine {
       if (curDir === targetDir) {
         if (targetLots > curLots) {
           const add = targetLots - curLots;
-          const cost = legCost(meta, rawT, add);
+          const cost = legCost(code, t, meta, rawT, add);
           cash -= cost;
           positions[code] = {
             lots: targetLots,
@@ -1787,7 +1841,7 @@ class BacktestEngine {
         } else if (targetLots < curLots) {
           const close = curLots - targetLots;
           const pnl = curDir * (adjT - cur.entryAdj) * meta.mult * close;
-          const cost = legCost(meta, rawT, close);
+          const cost = legCost(code, t, meta, rawT, close);
           cash += pnl - cost;
           positions[code] = {
             lots: targetLots,
@@ -1815,8 +1869,8 @@ class BacktestEngine {
       }
       // 方向翻转
       const pnlClose = curDir * (adjT - cur.entryAdj) * meta.mult * curLots;
-      const costClose = legCost(meta, rawT, curLots);
-      const costOpen = legCost(meta, rawT, targetLots);
+      const costClose = legCost(code, t, meta, rawT, curLots);
+      const costOpen = legCost(code, t, meta, rawT, targetLots);
       cash += pnlClose - costClose - costOpen;
       positions[code] = {
         lots: targetLots,
@@ -1904,8 +1958,8 @@ class BacktestEngine {
         executeRebalance(t, date, pending.targets);
         pending = null;
       }
-      // 4) 计划新调仓（信号 t 日生成，t+delay 成交）
-      if (rebSet.has(date) && !pending) {
+      // 4) 计划新调仓（信号 t 日生成，t+delay 成交；熔断后停止）
+      if (rebSet.has(date) && !pending && !circuitBroken) {
         const execIdx = Math.min(t + (cfg.executionDelay || 1), T - 1);
         pending = { execIdx, targets: strategy.targets[date] || {} };
       }
@@ -1924,6 +1978,20 @@ class BacktestEngine {
         nav: st.equity / cfg.initialCapital,
         nPositions: Object.keys(positions).length,
       };
+
+      // 6) 回撤熔断（可选）：回撤超阈值则全部平仓
+      if (st.equity > peakEquity) {
+        peakEquity = st.equity;
+      }
+      if (!circuitBroken && cfg.drawdownCutoff > 0) {
+        const dd = peakEquity > 0 ? (peakEquity - st.equity) / peakEquity : 0;
+        if (dd >= cfg.drawdownCutoff) {
+          for (const code of Object.keys(positions)) {
+            tradeTo(date, t, code, 0, 0, null);
+          }
+          circuitBroken = true;
+        }
+      }
     }
 
     const final = stats(T - 1);
@@ -1944,6 +2012,7 @@ class BacktestEngine {
         totalRollCost,
         nTrades: trades.length,
         nRolls: rolls.length,
+        circuitBroken,
       },
     };
   }
@@ -2087,6 +2156,35 @@ const FACTOR_NAMES = {
   rollYield: '展期收益率',
 };
 
+/** 因子注册表（配置驱动：元数据集中登记，新增因子在此加一条即可被报告/UI 引用） */
+const FACTOR_REGISTRY = {
+  momentum: {
+    key: 'momentum',
+    name: '截面动量',
+    sign: 1,
+    description: '过去 120 日收益，跳过近 1 月（12-1 动量）',
+  },
+  liquidity: {
+    key: 'liquidity',
+    name: '流动性',
+    sign: 1,
+    description: '-Amihud 非流动性（越高越流动）',
+  },
+  volume: {
+    key: 'volume',
+    name: '成交量',
+    sign: 1,
+    description: '量比 = 当日成交量 / 过去 20 日均量 - 1',
+  },
+  skewness: { key: 'skewness', name: '价格偏度', sign: 1, description: '20 日收益率偏度' },
+  rollYield: {
+    key: 'rollYield',
+    name: '展期收益率',
+    sign: 1,
+    description: '(主力价 - 次主力价)/次主力价，年化',
+  },
+};
+
 /** 持仓方向 (position direction) */
 const DIRECTION = {
   LONG: 1,
@@ -2097,7 +2195,7 @@ const DIRECTION = {
 /** 交易所集合 (exchanges) */
 const EXCHANGES = ['SHFE', 'DCE', 'CZCE', 'INE', 'GFEX'];
 
-  Object.assign(__exports, { SECTORS, FACTOR_KEYS, FACTOR_NAMES, DIRECTION, EXCHANGES });
+  Object.assign(__exports, { SECTORS, FACTOR_KEYS, FACTOR_NAMES, FACTOR_REGISTRY, DIRECTION, EXCHANGES });
 });
 __def("factors/newsSentiment", function(__req, __exports) {
   const { rngFromString } = __req("utils");
@@ -2338,6 +2436,434 @@ class TrendPredictor {
 }
 
   Object.assign(__exports, { TrendPredictor });
+});
+__def("research/factorAnalysis", function(__req, __exports) {
+  const { mean, pearson, spearman } = __req("utils");
+/**
+ * factorAnalysis.js — alphalens 式因子研究流水线（Phase 2）。
+ * 分层收益 / IC 序列与衰减 / 换手率 / 因子相关性矩阵 / 正交化（Gram-Schmidt 截面）。
+ */
+
+
+/** 未来 horizon 日收益：fwd[code][t] = P[t+horizon]/P[t]-1 */
+function forwardReturns(ds, codes, dates, horizon) {
+  const fwd = {};
+  for (const code of codes) {
+    const s = ds.getSeries(code);
+    fwd[code] = new Array(dates.length).fill(null);
+    for (let t = 0; t + horizon < dates.length; t++) {
+      if (s.mainAdj[t] != null && s.mainAdj[t + horizon] != null && s.mainAdj[t] > 0) {
+        fwd[code][t] = s.mainAdj[t + horizon] / s.mainAdj[t] - 1;
+      }
+    }
+  }
+  return fwd;
+}
+
+/** 分层收益：按因子 z 分 nQuantiles 组，各组未来 horizon 日收益均值 + 多空价差 */
+function quantileReturns(panel, ds, factorKey, nQuantiles = 5, horizon = 5) {
+  const dates = panel.dates;
+  const codes = panel.varieties;
+  const z = panel.z[factorKey];
+  const fwd = forwardReturns(ds, codes, dates, horizon);
+  const groups = new Array(nQuantiles).fill(null).map(() => []);
+  for (let t = 0; t + horizon < dates.length; t++) {
+    const rows = [];
+    for (const code of codes) {
+      const zv = z[code][t];
+      const fv = fwd[code][t];
+      if (zv != null && fv != null && Number.isFinite(zv) && Number.isFinite(fv)) {
+        rows.push({ zv, fv });
+      }
+    }
+    if (rows.length < nQuantiles) {
+      continue;
+    }
+    rows.sort((a, b) => a.zv - b.zv);
+    const per = Math.floor(rows.length / nQuantiles);
+    for (let q = 0; q < nQuantiles; q++) {
+      const group = q === nQuantiles - 1 ? rows.slice(q * per) : rows.slice(q * per, (q + 1) * per);
+      groups[q].push(mean(group.map((r) => r.fv)));
+    }
+  }
+  const q = groups.map((g) => mean(g));
+  return { quantiles: q, spread: q[nQuantiles - 1] - q[0], horizon, nQuantiles };
+}
+
+/** 逐日截面 IC（Spearman）序列 */
+function icSeries(panel, ds, factorKey, horizon = 5) {
+  const dates = panel.dates;
+  const codes = panel.varieties;
+  const z = panel.z[factorKey];
+  const fwd = forwardReturns(ds, codes, dates, horizon);
+  const ics = [];
+  for (let t = 0; t + horizon < dates.length; t++) {
+    const xs = [];
+    const ys = [];
+    for (const code of codes) {
+      const zv = z[code][t];
+      const fv = fwd[code][t];
+      if (zv != null && fv != null && Number.isFinite(zv) && Number.isFinite(fv)) {
+        xs.push(zv);
+        ys.push(fv);
+      }
+    }
+    if (xs.length >= 8) {
+      const r = spearman(xs, ys);
+      if (Number.isFinite(r)) {
+        ics.push(r);
+      }
+    }
+  }
+  return ics;
+}
+
+/** IC 衰减：多 horizon 的 IC */
+function icDecay(panel, ds, factorKey, horizons = [1, 2, 3, 5, 10, 20]) {
+  return horizons.map((h) => ({ horizon: h, ic: mean(icSeries(panel, ds, factorKey, h)) }));
+}
+
+/** top N 组合平均换手率（每日名字变化比例） */
+function topTurnover(panel, factorKey, topN = 5) {
+  const dates = panel.dates;
+  const codes = panel.varieties;
+  const z = panel.z[factorKey];
+  let prev = null;
+  const turnovers = [];
+  for (let t = 0; t < dates.length; t++) {
+    const rows = [];
+    for (const code of codes) {
+      const zv = z[code][t];
+      if (zv != null && Number.isFinite(zv)) {
+        rows.push({ code, zv });
+      }
+    }
+    if (rows.length < topN) {
+      continue;
+    }
+    rows.sort((a, b) => b.zv - a.zv);
+    const top = new Set(rows.slice(0, topN).map((r) => r.code));
+    if (prev) {
+      let changed = 0;
+      for (const c of top) {
+        if (!prev.has(c)) {
+          changed++;
+        }
+      }
+      turnovers.push(changed / topN);
+    }
+    prev = top;
+  }
+  return mean(turnovers);
+}
+
+/** 因子相关性矩阵（截面 Pearson 的时序均值） */
+function factorCorrelation(panel, factors) {
+  const dates = panel.dates;
+  const codes = panel.varieties;
+  const acc = {};
+  for (const f of factors) {
+    acc[f] = {};
+    for (const g of factors) {
+      acc[f][g] = [];
+    }
+  }
+  for (let t = 0; t < dates.length; t++) {
+    for (let i = 0; i < factors.length; i++) {
+      for (let j = i; j < factors.length; j++) {
+        const a = factors[i];
+        const b = factors[j];
+        const xs = [];
+        const ys = [];
+        for (const code of codes) {
+          const av = panel.z[a][code][t];
+          const bv = panel.z[b][code][t];
+          if (av != null && bv != null && Number.isFinite(av) && Number.isFinite(bv)) {
+            xs.push(av);
+            ys.push(bv);
+          }
+        }
+        if (xs.length >= 8) {
+          const r = pearson(xs, ys);
+          if (Number.isFinite(r)) {
+            acc[a][b].push(r);
+          }
+        }
+      }
+    }
+  }
+  const M = {};
+  for (const f of factors) {
+    M[f] = {};
+    for (const g of factors) {
+      const arr = f === g ? [1] : acc[f][g].length ? acc[f][g] : acc[g][f];
+      M[f][g] = arr.length ? mean(arr) : 0;
+    }
+  }
+  return M;
+}
+
+/** Gram-Schmidt 顺序正交化（截面）：正交后因子两两相关接近 0 */
+function orthogonalize(panel, factors) {
+  const dates = panel.dates;
+  const codes = panel.varieties;
+  const orth = {};
+  const order = [];
+  for (const f of factors) {
+    const zf = {};
+    for (const code of codes) {
+      zf[code] = panel.z[f][code].slice();
+    }
+    for (let t = 0; t < dates.length; t++) {
+      for (const g of order) {
+        const xs = [];
+        const ys = [];
+        for (const code of codes) {
+          const a = zf[code][t];
+          const b = orth[g][code][t];
+          if (a != null && b != null && Number.isFinite(a) && Number.isFinite(b)) {
+            xs.push(a);
+            ys.push(b);
+          }
+        }
+        if (xs.length < 8) {
+          continue;
+        }
+        const beta = pearson(xs, ys);
+        if (Number.isFinite(beta)) {
+          for (const code of codes) {
+            if (zf[code][t] != null && orth[g][code][t] != null) {
+              zf[code][t] -= beta * orth[g][code][t];
+            }
+          }
+        }
+      }
+      const vals = [];
+      for (const code of codes) {
+        if (zf[code][t] != null && Number.isFinite(zf[code][t])) {
+          vals.push(zf[code][t]);
+        }
+      }
+      if (vals.length >= 2) {
+        const m = mean(vals);
+        const s = Math.sqrt(vals.reduce((a, b) => a + (b - m) * (b - m), 0) / vals.length) || 1;
+        for (const code of codes) {
+          if (zf[code][t] != null) {
+            zf[code][t] = (zf[code][t] - m) / s;
+          }
+        }
+      }
+    }
+    orth[f] = zf;
+    order.push(f);
+  }
+  return orth;
+}
+
+  Object.assign(__exports, { forwardReturns, quantileReturns, icSeries, icDecay, topTurnover, factorCorrelation, orthogonalize });
+});
+__def("research/paperLedger", function(__req, __exports) {
+  const { mean } = __req("utils");
+/**
+ * paperLedger.js — 前向纸面验证账本（Phase 3）。
+ * 记录每个预测（ts/code/方向/得分/入场价），到 horizon 后按实际价结算（收益/命中），并给出统计。
+ * 解决「历史新闻无法回测」：不回溯，而是前向记录并事后统计命中率/收益。
+ */
+
+
+class PaperLedger {
+  constructor() {
+    this.records = [];
+  }
+
+  /** 记录一条预测：{ ts, code, direction(1/-1), score, entryPrice } */
+  add(record) {
+    this.records.push(record);
+  }
+
+  /** 结算一条：给定结算价，回填 ret / hit */
+  settle(record, settlePrice) {
+    const ret = record.direction * (settlePrice / record.entryPrice - 1);
+    record.settlePrice = settlePrice;
+    record.ret = ret;
+    record.hit = ret > 0;
+    return record;
+  }
+
+  settled() {
+    return this.records.filter((r) => r.settlePrice != null);
+  }
+
+  stats() {
+    const s = this.settled();
+    const n = s.length;
+    const longs = s.filter((r) => r.direction === 1);
+    const shorts = s.filter((r) => r.direction === -1);
+    return {
+      n: n,
+      hitRate: n ? s.filter((r) => r.hit).length / n : 0,
+      avgRet: n ? mean(s.map((r) => r.ret)) : 0,
+      cumRet: n ? s.reduce((a, r) => a + r.ret, 0) : 0,
+      nLong: longs.length,
+      nShort: shorts.length,
+      longHitRate: longs.length ? longs.filter((r) => r.hit).length / longs.length : 0,
+      shortHitRate: shorts.length ? shorts.filter((r) => r.hit).length / shorts.length : 0,
+    };
+  }
+
+  /** 按品种聚合命中率 */
+  byCode() {
+    const map = {};
+    for (const r of this.settled()) {
+      (map[r.code] = map[r.code] || []).push(r);
+    }
+    const out = {};
+    for (const code of Object.keys(map)) {
+      const arr = map[code];
+      out[code] = {
+        n: arr.length,
+        hitRate: arr.filter((x) => x.hit).length / arr.length,
+        avgRet: mean(arr.map((x) => x.ret)),
+      };
+    }
+    return out;
+  }
+}
+
+  Object.assign(__exports, { PaperLedger });
+});
+__def("risk/risk", function(__req, __exports) {
+  const { mean } = __req("utils");
+/**
+ * risk.js — 风控（Phase 2）：历史 VaR / CVaR / 最大回撤 / 单日冲击压力测试。
+ */
+
+
+function dailyReturns(nav) {
+  const rets = [];
+  for (let i = 1; i < nav.length; i++) {
+    if (nav[i] != null && nav[i - 1] != null && nav[i - 1] > 0) {
+      rets.push(nav[i] / nav[i - 1] - 1);
+    }
+  }
+  return rets;
+}
+
+/** 历史 VaR（正值 = 损失）：分位数法 */
+function historicalVaR(nav, confidence = 0.95) {
+  const rets = dailyReturns(nav).sort((a, b) => a - b);
+  if (!rets.length) {
+    return 0;
+  }
+  const idx = Math.max(0, Math.floor((1 - confidence) * rets.length));
+  return -rets[idx];
+}
+
+/** 期望损失 CVaR（尾部均值） */
+function expectedShortfall(nav, confidence = 0.95) {
+  const rets = dailyReturns(nav).sort((a, b) => a - b);
+  const idx = Math.max(0, Math.floor((1 - confidence) * rets.length));
+  const tail = rets.slice(0, idx);
+  return tail.length ? -mean(tail) : 0;
+}
+
+/** 最大回撤 */
+function maxDrawdown(nav) {
+  let peak = -Infinity;
+  let maxDD = 0;
+  for (const v of nav) {
+    if (v == null) {
+      continue;
+    }
+    if (v > peak) {
+      peak = v;
+    }
+    const dd = peak > 0 ? (peak - v) / peak : 0;
+    if (dd > maxDD) {
+      maxDD = dd;
+    }
+  }
+  return maxDD;
+}
+
+/** 压力测试：单日 shock 本身即造成 |shock| 回撤（保守口径：压力后最大回撤 = max(原回撤, |shock|)） */
+function stressTest(nav, shock = -0.1) {
+  const dd = maxDrawdown(nav);
+  const shockAbs = Math.abs(shock);
+  return { shock, maxDrawdownBefore: dd, maxDrawdownAfter: Math.max(dd, shockAbs) };
+}
+
+  Object.assign(__exports, { dailyReturns, historicalVaR, expectedShortfall, maxDrawdown, stressTest });
+});
+__def("portfolio/optimizer", function(__req, __exports) {
+  const { std } = __req("utils");
+/**
+ * optimizer.js — 组合优化（Phase 2，JS 实现，等价 cvxpy 风险平价/板块约束的简化版）。
+ * 逆波动率权重（naive risk parity）+ 等风险贡献迭代 + 板块暴露上限缩放。
+ */
+
+
+/** 逆波动率权重：weight_i 正比于 1/vol_i */
+function inverseVolWeights(returnsByCode, codes) {
+  const inv = {};
+  let sum = 0;
+  for (const code of codes) {
+    const s = std(returnsByCode[code] || []);
+    inv[code] = s > 0 ? 1 / s : 0;
+    sum += inv[code];
+  }
+  const w = {};
+  for (const code of codes) {
+    w[code] = sum > 0 ? inv[code] / sum : 1 / codes.length;
+  }
+  return w;
+}
+
+/** 等风险贡献（ERC）近似：迭代调整 w_i 正比于 1/vol_i */
+function riskParityWeights(returnsByCode, codes, iterations = 20) {
+  const vols = {};
+  for (const code of codes) {
+    const s = std(returnsByCode[code] || []);
+    vols[code] = s > 0 ? s : 1;
+  }
+  let w = inverseVolWeights(returnsByCode, codes);
+  for (let it = 0; it < iterations; it++) {
+    let sum = 0;
+    const next = {};
+    for (const code of codes) {
+      next[code] = w[code] / vols[code];
+      sum += next[code];
+    }
+    for (const code of codes) {
+      next[code] = sum > 0 ? next[code] / sum : 1 / codes.length;
+    }
+    w = next;
+  }
+  return w;
+}
+
+/** 板块暴露上限：某板块权重超过 maxSectorWeight 则按比例缩减该板块内权重 */
+function capSectorExposure(weights, codes, sectorOf, maxSectorWeight = 0.3) {
+  const sectorW = {};
+  for (const code of codes) {
+    const sec = sectorOf(code);
+    sectorW[sec] = (sectorW[sec] || 0) + Math.abs(weights[code] || 0);
+  }
+  const w = Object.assign({}, weights);
+  for (const sec of Object.keys(sectorW)) {
+    if (sectorW[sec] > maxSectorWeight) {
+      const scale = maxSectorWeight / sectorW[sec];
+      for (const code of codes) {
+        if (sectorOf(code) === sec) {
+          w[code] *= scale;
+        }
+      }
+    }
+  }
+  return w;
+}
+
+  Object.assign(__exports, { inverseVolWeights, riskParityWeights, capSectorExposure });
 });
   var entry = __req('index');
   if (typeof module !== 'undefined' && module.exports) { module.exports = entry; }

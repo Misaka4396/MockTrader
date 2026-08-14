@@ -3,6 +3,25 @@
 本项目所有重要变更均记录在此文件中，格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.3.0] - 2026-08-14
+
+### Added
+
+- **Phase 1 研究可信度**：样本外分割 + Walk-forward（`tools/walkforward.mjs`，含参数稳健性网格）、
+  `DataAccess.dataFingerprint()` 数据版本指纹、多源交叉校验（`py/verify_sources.py`）、
+  冲击成本模型（平方根，可选默认关闭保持逐位一致）、真实路径前视审计（`tools/lookahead_audit.mjs`）。
+- **Phase 2 研究深度**：alphalens 式因子流水线 `src/core/research/factorAnalysis.js`（分层收益 / IC 衰减 / 换手 / 相关性矩阵 / Gram-Schmidt 正交化）、
+  风控 `src/core/risk/risk.js`（历史 VaR / CVaR / 压力测试）、组合优化 `src/core/portfolio/optimizer.js`（逆波动率 / 等风险贡献 / 板块上限）、
+  因子注册表 `FACTOR_REGISTRY`、回撤熔断 `drawdownCutoff`（JS + C# 双实现镜像）；`tools/factor_report.mjs` / `risk_report.mjs` / `portfolio_demo.mjs`。
+- **Phase 3 实盘准备（部分）**：前向纸面验证账本 `src/core/research/paperLedger.js` + `tools/paper_trading.mjs`、
+  告警 `py/alert.py`（钉钉/企微）、调度监控 `py/monitor.py`（心跳 + 数据新鲜度）、CTP 模拟盘骨架 `py/ctp_paper.py`。
+- 单元测试 28 → **37 项**（因子分析×5 / 风控 / 组合 / 纸面账本 / 回撤熔断）。
+
+### Changed
+
+- `BacktestEngine`（JS + C#）：新增可选冲击成本与回撤熔断（默认关闭，与原行为逐位一致）。
+- 版本号 1.2.0 → 1.3.0；docs 新增 11_roadmap / 12_phase2_research / 13_phase3_live。
+
 ## [1.2.0] - 2026-08-14
 
 ### Added
