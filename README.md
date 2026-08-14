@@ -1,4 +1,6 @@
-# MockTrader · 商品期货多空因子回测系统
+# MockTrader
+
+**English** | [简体中文](README.zh.md)
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Misaka4396/MockTrader/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -6,108 +8,85 @@
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](cs/)
 [![Test](https://img.shields.io/badge/test-21%20passed-brightgreen.svg)](test/)
 
-中国商品期货 **多合约 + 展期收益率 + 多空组合** 因子回测系统（方案 B），对比纳指长线收益率（单值基准）。
-交付**三套产物**：可移植 **JS 核心** + 自包含 **Web 原型**（开发/验证/可视化）+ 原生 **C# exe+dll**（S8），
-C# 每个 dll 职责与 JS 模块一一对应，同一确定性种子下**逐位一致**。
+MockTrader is an open-source **commodity-futures long-short factor backtesting system** for the Chinese market — multi-contract **roll yields** + a **long-short portfolio** (Option B), benchmarked against Nasdaq long-term returns (single-value baseline).
 
-> ⚠️ 数据为确定性种子合成的模拟行情，**不代表真实收益**，仅用于验证算法正确性。
+It ships **three artifacts**: a portable **JS core**, a **self-contained Web prototype** (develop / verify / visualize), and a **native C# exe+dll** build (S8). Each C# dll's responsibility maps 1:1 to a JS module, and both implementations produce **bit-for-bit identical results** under the same deterministic seed (45 varieties · 782 days · 450 trades · final equity 9,164,404 · verdict "underperform").
 
-## 目录
+> ⚠️ Data is deterministically seeded **synthetic market data for algorithm validation only — not real returns**.
 
-- [功能特性](#功能特性)
-- [快速开始](#快速开始)
-- [原生 exe+dll（S8）](#原生-exedlls8)
-- [项目结构](#项目结构)
-- [双实现一致性](#双实现一致性)
-- [验收对照](#验收对照)
-- [License](#license)
+## Features
 
-## 功能特性
+| Layer | Description |
+|-------|-------------|
+| **S1 Data** | 45 varieties (ferrous / nonferrous / energy-chemical / agriculture / precious metals, incl. 3 delisted) with full metadata; deterministic multi-contract daily bars; main/sub continuous series; back-adjusted rolls via price-ratio method (**zero roll-jump**); 1.15 hysteresis against main-contract flapping |
+| **S2 Factors** | 5-factor panel: 12-1 momentum / -Amihud liquidity / volume ratio / price skewness / roll yield; pure functions with **no look-ahead**; MAD winsorize + cross-sectional z-score |
+| **S3 Strategy** | factor composite (equal / rolling-IC / custom weights), long 5 short 5, dollar-neutral, monthly/weekly rebalance with buffer band to cut turnover |
+| **S4 Backtest** | daily mark-to-market, margin + 1.5x leverage cap, t+1 close execution (no look-ahead), two-sided commission + slippage, auto roll-over, delisting liquidation, blow-up protection |
+| **S5 Performance** | annualized return / Sharpe / max drawdown / Calmar / volatility / win rate; configurable Nasdaq benchmark (15% default), verdict within ±2pp |
+| **S6/S7 Web** | self-contained single-file HTML (offline double-click), Web Worker execution (UI never blocks), Canvas chart with zoom / pan / hover / drawdown shading |
+| **S8 C# native** | `DataAccess.dll` + `StrategyCore.dll` + `MockTrader.exe` (WPF) three-layer exe+dll split, **bit-identical** to the JS core, fully buildable offline |
 
-| 模块 | 特性 |
-|------|------|
-| 📊 数据层 S1 | 45 品种元数据（乘数/保证金/tick/上市退市日期）、确定性合成多合约日线、主力/次主力连续、后复权比值法展期复权（**换月零跳空**）、1.15 迟滞防抖动 |
-| 🧮 因子引擎 S2 | 5 因子面板：截面动量(12-1) / -Amihud 流动性 / 量比 / 价格偏度 / 展期收益率；纯函数无未来函数；MAD winsorize + 截面 z-score |
-| 🎯 策略引擎 S3 | 因子合成（等权/IC 加权/自定义）、多 5 空 5 多空选品、方向中性、月度/周度调仓、缓冲带降换手 |
-| 💰 回测引擎 S4 | 逐日盯市、保证金与 1.5 倍杠杆上限、t+1 收盘成交（无前视）、双边手续费+滑点、展期自动换月、退市强平、爆仓保护 |
-| 📈 绩效引擎 S5 | 年化/Sharpe/最大回撤/卡玛/波动率/胜率；纳指长线基准（默认 15% 可配置），±2pp 判定跑赢/跑输/接近 |
-| 🖥️ Web 原型 S6/S7 | 自包含单文件 HTML（离线双击可用）、Worker 后台执行不卡 UI、Canvas 自绘净值图（缩放/拖拽/悬停/回撤阴影） |
-| 🏗️ C# 原生版 S8 | DataAccess.dll + StrategyCore.dll + MockTrader.exe（WPF）三层分层，与 JS 逐位一致，离线可编译 |
+## Run
 
-## 快速开始
+### Web prototype (no dependencies)
 
-```bash
-npm test                       # 21 项单元测试（S1-S5 验收）
-node tools/persist.mjs         # 生成本地数据文件到 data/
-npm run build:web              # 打包为 dist/index.html
-# 双击 dist/index.html 即可运行（离线自包含，后台线程 + 进度条不卡 UI）
-node tools/smoke.mjs           # 验证打包核心与源码结果一致 + worker + HTML
+```sh
+npm test                  # 21 unit tests (S1-S5 acceptance)
+node tools/persist.mjs    # persist local data files to data/
+npm run build:web         # bundle dist/index.html
+# double-click dist/index.html to run (offline self-contained)
+node tools/smoke.mjs      # verify bundle == source + worker + HTML
 ```
 
-## 原生 exe+dll（S8）
+### Native exe+dll (S8, requires .NET 8 runtime)
 
-沙箱实测有 dotnet 8 SDK（离线可编译），已产出真正 exe+dll：
-
-```bash
-powershell -ExecutionPolicy Bypass -File cs\build.ps1   # 产物在 release/
+```sh
+powershell -ExecutionPolicy Bypass -File cs\build.ps1   # output in release/
 release\MockTrader.exe
 ```
 
-| 文件 | 大小 | 职责 |
+| File | Size | Role |
 |------|------|------|
-| MockTrader.exe | ~140 KB | 薄入口 + WPF 图形界面（apphost 地板） |
-| StrategyCore.dll | ~29 KB | S2-S5 因子/策略/回测/绩效 |
-| DataAccess.dll | ~25 KB | S1 数据层 |
+| MockTrader.exe | ~140 KB | thin entry + WPF GUI (apphost floor) |
+| StrategyCore.dll | ~29 KB | S2-S5 factors / strategy / backtest / performance |
+| DataAccess.dll | ~25 KB | S1 data layer |
 
-C# 版与 JS 核心逐位一致（45 品种、782 日、450 笔交易、期末权益 9,164,404、结论「跑输」）。详见 [docs/08](docs/08_exe_dll_notes.md)。
+> Download the prebuilt artifacts from the [Releases](https://github.com/Misaka4396/MockTrader/releases) page.
 
-## 项目结构
+## Verification
+
+- **21/21 unit tests pass** (zero-dependency runner, S1-S5 acceptance).
+- Default run (2022-01-03 ~ 2024-12-31): **45 varieties · 782 trading days · 450 trades · 245 rolls · final equity 9,164,404 · annualized -2.78% · verdict "underperform"** vs the 15% benchmark (excess -17.78pp).
+- C# port is **bit-for-bit identical** to the JS core (same deterministic seed) — verified via `tools/smoke.mjs`.
+
+## Project structure
 
 ```text
-src/core/          可移植核心（S1-S5，纯函数 ESM，Node 可测、浏览器可打包）
-  index.js         公共 API 桶 + runPipeline 一键流水线
-  types.js utils.js
-  data/            S1：metadata / synthetic / roll / dataAccess
-  factors/         S2：factorEngine
-  strategy/        S3：strategyEngine
-  backtest/        S4：backtestEngine
-  performance/     S5：performanceEngine
-src/web/           薄 GUI（S6/S7）：app.js / chart.js / worker.js / styles.css / template.html
-cs/                S8 原生 C# 版：DataAccess / StrategyCore / MockTrader（WPF）三项目
-test/              21 项单元测试（零依赖运行器）+ 冒烟脚本
-tools/             打包器 build-web.mjs / 冒烟 smoke.mjs / 持久化 persist.mjs
-docs/              设计文档 01-08（架构/数据 schema/因子/策略/回测会计/绩效/基准风险/exe-dll）
-data/              本地数据文件（manifest / metadata / continuous 45 品种）
-dist/              可分发产物：index.html（离线自包含）+ mocktrader.js（UMD）
-release/           原生 exe+dll 产物（由 Release 附件分发，不入库）
+src/core/          portable core (S1-S5, pure ESM, Node-testable, browser-bundlable)
+  index.js         public API barrel + runPipeline one-shot pipeline
+  data/            S1: metadata / synthetic / roll / dataAccess
+  factors/         S2: factorEngine
+  strategy/        S3: strategyEngine
+  backtest/        S4: backtestEngine
+  performance/     S5: performanceEngine
+src/web/           thin GUI (S6/S7): app.js / chart.js / worker.js / styles.css / template.html
+cs/                S8 native C#: DataAccess / StrategyCore / MockTrader (WPF)
+test/              21 unit tests (zero-dependency runner) + smoke scripts
+tools/             build-web.mjs (bundler) / smoke.mjs / persist.mjs
+docs/              design docs 01-08 (architecture / data schema / factors / strategy / accounting / metrics / benchmark-risk / exe-dll)
+data/              persisted local data (manifest / metadata / continuous)
+dist/              distributables: index.html (offline self-contained) + mocktrader.js (UMD)
+release/           native exe+dll artifacts (distributed via Releases, not committed)
 ```
 
-## 双实现一致性
+## Documentation
 
-| 原规格 | C# 产物 | JS 模块 | 职责 |
-|--------|---------|---------|------|
-| S1 数据层 | DataAccess.dll | `src/core/data/dataAccess.js` | 多合约日线、主力/次主力连续、展期复权、元数据 |
-| S2 因子 | StrategyCore.dll | `src/core/factors/factorEngine.js` | 5 因子面板（纯函数、无未来函数） |
-| S3 策略 | StrategyCore.dll | `src/core/strategy/strategyEngine.js` | 因子合成、多空选品、中性化、调仓 |
-| S4 回测 | StrategyCore.dll | `src/core/backtest/backtestEngine.js` | 保证金/乘数/逐日盯市/展期滚动/成本 |
-| S5 绩效 | StrategyCore.dll | `src/core/performance/performanceEngine.js` | 指标 + 纳指长线基准对比 |
-| S6/S7 GUI | MockTrader.exe | `src/web/app.js` + `dist/index.html` | 薄 GUI，只调核心 |
-| S8 打包 | exe+dll 分层 | `tools/build-web.mjs` | ESM 打包为单 UMD + 自包含 HTML |
+- [Architecture](docs/01_architecture.md) · [Data schema](docs/02_data_schema.md) · [Factor docs](docs/03_factor_docs.md) · [Strategy config](docs/04_strategy_config.md)
+- [Backtest accounting](docs/05_backtest_accounting.md) · [Performance metrics](docs/06_performance_metrics.md) · [Benchmark & risk](docs/07_benchmark_and_risk.md) · [exe+dll notes](docs/08_exe_dll_notes.md)
 
-## 验收对照
+## Contributing
 
-| 验收点 | 实现/验证 |
-|--------|-----------|
-| 任意品种主力/次主力/各月合约可读 | DataAccess.getSeries/getBars/getContracts |
-| 展期复权后无异常跳空 | 后复权比值法 + test-data「back-adjust removes roll jump exactly」 |
-| 品种元数据完整 | 45 品种（含 3 个已退市）乘数/保证金/tick/上市退市日期 |
-| 因子可复现/符号正确/无未来函数 | FactorEngine + test-factors |
-| 展期收益率与升贴水一致 | rollYield ≈ -carry，test-data/test-factors 断言 |
-| 单/多因子切换、多空信号、方向中性 | StrategyEngine + test-strategy |
-| 净值可复现/展期滚动无跳空/成本正确/多空符号 | BacktestEngine + test-backtest |
-| 指标可复现/超额收益/结论判定 | PerformanceEngine + test-performance |
-| 基准可配置、口径备注 | perfConfig.benchmarkAnnual + docs/06/07 |
-| exe 薄 / 逻辑在 dll / 可分发 | 核心在 JS 模块，GUI 只调 runPipeline；dist/index.html 单文件分发 |
+Feel free to submit issues or pull requests. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## License
 
