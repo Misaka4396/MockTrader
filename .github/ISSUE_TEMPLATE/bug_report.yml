@@ -1,6 +1,6 @@
 name: Bug report
 description: 提交缺陷报告（程序行为与预期不符）
-title: "[bug] "
+title: '[bug] '
 labels: [bug]
 body:
   - type: markdown
@@ -37,7 +37,7 @@ body:
       placeholder: |
         1. 
         2. 
-        3. 
+        3.
     validations:
       required: true
   - type: dropdown

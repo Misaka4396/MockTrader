@@ -38,13 +38,22 @@ __def("index", function(__req, __exports) {
 /** 一键端到端流水线（数据 -> 因子 -> 策略 -> 回测 -> 绩效），供 GUI/Worker 调用。 */
 function runPipeline(options = {}) {
   const {
-    start = '2022-01-03', end = '2024-12-31', masterSeed = 'mocktrader-default-seed',
+    start = '2022-01-03',
+    end = '2024-12-31',
+    masterSeed = 'mocktrader-default-seed',
     varieties = null,
-    factorParams = {}, strategyConfig = {}, backtestConfig = {}, perfConfig = {},
+    factorParams = {},
+    strategyConfig = {},
+    backtestConfig = {},
+    perfConfig = {},
     onProgress = null,
   } = options;
 
-  const report = (step, frac) => { if (onProgress) onProgress(step, frac); };
+  const report = (step, frac) => {
+    if (onProgress) {
+      onProgress(step, frac);
+    }
+  };
 
   report('生成数据', 0.05);
   const ds = new DataAccess().generate({ start, end, masterSeed, varieties });
@@ -102,7 +111,7 @@ class DataAccess {
   reset() {
     this.dates = [];
     this.dataset = null; // { code: { contracts: {[contractCode]: bars[]} } }
-    this.series = {};    // code -> continuousSeries 结果 (缓存)
+    this.series = {}; // code -> continuousSeries 结果 (缓存)
     this.config = null;
   }
 
@@ -118,7 +127,7 @@ class DataAccess {
     const dataset = {};
     for (const code of codes) {
       const meta = METADATA_BY_CODE[code];
-      if (!meta) continue;
+      if (!meta) {continue;}
       dataset[code] = generateVariety(meta, dates, masterSeed);
     }
     this.dates = dates;
@@ -147,29 +156,29 @@ class DataAccess {
 
   /** 某品种全部合约代码（已排序） */
   getContracts(code) {
-    if (!this.dataset || !this.dataset[code]) return [];
+    if (!this.dataset || !this.dataset[code]) {return [];}
     return Object.keys(this.dataset[code].contracts).sort();
   }
 
   /** 某合约日线 */
   getBars(code, contractCode) {
-    if (!this.dataset || !this.dataset[code]) return null;
+    if (!this.dataset || !this.dataset[code]) {return null;}
     return this.dataset[code].contracts[contractCode] || null;
   }
 
   /** 某合约某日 bar */
   getBar(code, contractCode, date) {
     const bars = this.getBars(code, contractCode);
-    if (!bars) return null;
+    if (!bars) {return null;}
     // 线性定位（数据按日期升序）
-    for (const b of bars) if (b.date === date) return b;
+    for (const b of bars) {if (b.date === date) {return b;}}
     return null;
   }
 
   /** 某品种主力/次主力连续序列（含后复权） */
   getSeries(code) {
-    if (!this.dataset || !this.dataset[code]) return null;
-    if (!this.series[code]) this.series[code] = continuousSeries(this.dates, this.dataset[code].contracts);
+    if (!this.dataset || !this.dataset[code]) {return null;}
+    if (!this.series[code]) {this.series[code] = continuousSeries(this.dates, this.dataset[code].contracts);}
     return this.series[code];
   }
 
@@ -195,13 +204,13 @@ class DataAccess {
     const out = [];
     for (const code of this.codes) {
       const meta = METADATA_BY_CODE[code];
-      if (!meta) continue;
-      if (meta.list && date < meta.list) continue;
-      if (meta.delist && date > meta.delist) continue;
+      if (!meta) {continue;}
+      if (meta.list && date < meta.list) {continue;}
+      if (meta.delist && date > meta.delist) {continue;}
       const s = this.getSeries(code);
-      if (!s) continue;
+      if (!s) {continue;}
       const i = this.dates.indexOf(date);
-      if (i >= 0 && s.mainRaw[i] != null) out.push(code);
+      if (i >= 0 && s.mainRaw[i] != null) {out.push(code);}
     }
     return out;
   }
@@ -209,7 +218,7 @@ class DataAccess {
   /** 导出可序列化快照（含全部合约与派生连续序列） */
   exportSnapshot() {
     const series = {};
-    for (const code of this.codes) series[code] = this.getSeries(code);
+    for (const code of this.codes) {series[code] = this.getSeries(code);}
     return {
       version: 1,
       config: this.config,
@@ -335,7 +344,6 @@ function getMeta(code) {
 });
 __def("data/synthetic", function(__req, __exports) {
   const { rngFromString, randn, tradingDates, addDays, diffDays, roundTo } = __req("utils");
-  const { METADATA } = __req("data/metadata");
 /**
  * synthetic.js — 合成行情生成器 (S1)。确定性、可复现，用于无真实数据源时的原型验证。
  *
@@ -346,7 +354,6 @@ __def("data/synthetic", function(__req, __exports) {
  *  - 成交量/持仓量围绕「距交割月数」形成峰值（非对称，近交割快速衰减），从而自然形成主力切换。
  *  - 已退市品种按 delist 日期停止出数据，但元数据保留。
  */
-
 
 
 
@@ -378,7 +385,6 @@ function simParams(code, sector) {
   return Object.assign({}, SECTOR_SIM_DEFAULT[sector], SIM_OVERRIDES[code] || {});
 }
 
-const DAYS_PER_MONTH = 30.44;
 const DT = 1 / 252;
 
 /** 合约代码：RB + YYMM -> 'RB2305' */
@@ -403,9 +409,9 @@ function volShape(m, peak, spread) {
 
 /** 月份列表（meta.months 或全部 12 个月） */
 function deliveryMonths(meta) {
-  if (meta.months) return meta.months.slice();
+  if (meta.months) {return meta.months.slice();}
   const all = [];
-  for (let m = 1; m <= 12; m++) all.push(m);
+  for (let m = 1; m <= 12; m++) {all.push(m);}
   return all;
 }
 
@@ -415,7 +421,7 @@ function deliveryMonths(meta) {
  */
 function generateVariety(meta, dates, masterSeed) {
   const sim = simParams(meta.code, meta.sector);
-  const rng = rngFromString(masterSeed + ':' + meta.code);
+  const rng = rngFromString(`${masterSeed }:${ meta.code}`);
   const N = dates.length;
   const first = dates[0];
   const last = dates[N - 1];
@@ -462,10 +468,10 @@ function generateVariety(meta, dates, masterSeed) {
   for (let y = y0 - 1; y <= y1 + 1; y++) {
     for (const mm of months) {
       const del = deliveryISO(y, mm);
-      const listDate = addDays(del, -360);       // 约 12 个月前上市
-      const lastTrade = addDays(del, -7);        // 交割前约一周停止交易
+      const listDate = addDays(del, -360); // 约 12 个月前上市
+      const lastTrade = addDays(del, -7); // 交割前约一周停止交易
       // 仅保留与样本区间有交集的合约
-      if (lastTrade < first || listDate > last) continue;
+      if (lastTrade < first || listDate > last) {continue;}
       codes.push({ code: contractCode(meta.code, y, mm), del, listDate, lastTrade });
     }
   }
@@ -476,11 +482,11 @@ function generateVariety(meta, dates, masterSeed) {
     const bars = [];
     let prevClose = null;
     for (const d of dates) {
-      if (d < con.listDate || d > con.lastTrade) continue;
+      if (d < con.listDate || d > con.lastTrade) {continue;}
       // 品种退市门控：退市日之后不再出数据
-      if (meta.delist && d > meta.delist) continue;
+      if (meta.delist && d > meta.delist) {continue;}
       const i = idxOf.get(d);
-      if (i === undefined) continue;
+      if (i === undefined) {continue;}
       const spot = Math.exp(logP[i]);
       const ttm = Math.max(diffDays(d, con.del), 1) / 365;
       const fair = spot * Math.exp(carry[i] * ttm) * (1 + basisC);
@@ -510,7 +516,7 @@ function generateVariety(meta, dates, masterSeed) {
       });
       prevClose = close;
     }
-    if (bars.length) contracts[con.code] = bars;
+    if (bars.length) {contracts[con.code] = bars;}
   }
   return { code: meta.code, contracts };
 }
@@ -559,8 +565,12 @@ function rngFromString(key) {
 function randn(rng) {
   let u = 0;
   let v = 0;
-  while (u === 0) u = rng();
-  while (v === 0) v = rng();
+  while (u === 0) {
+    u = rng();
+  }
+  while (v === 0) {
+    v = rng();
+  }
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
@@ -607,7 +617,9 @@ function tradingDates(startIso, endIso) {
   let cur = startIso;
   const end = parseISO(endIso);
   while (parseISO(cur) <= end) {
-    if (isWeekday(cur)) out.push(cur);
+    if (isWeekday(cur)) {
+      out.push(cur);
+    }
     cur = addDays(cur, 1);
   }
   return out;
@@ -615,8 +627,12 @@ function tradingDates(startIso, endIso) {
 
 /** 日期是否在 [start, end] 内 (含端点；空串视为无界) */
 function inRange(iso, startIso, endIso) {
-  if (startIso && iso < startIso) return false;
-  if (endIso && iso > endIso) return false;
+  if (startIso && iso < startIso) {
+    return false;
+  }
+  if (endIso && iso > endIso) {
+    return false;
+  }
   return true;
 }
 
@@ -626,22 +642,30 @@ function inRange(iso, startIso, endIso) {
 
 function sum(arr) {
   let s = 0;
-  for (let i = 0; i < arr.length; i++) s += arr[i];
+  for (let i = 0; i < arr.length; i++) {
+    s += arr[i];
+  }
   return s;
 }
 
 function mean(arr) {
-  if (!arr.length) return NaN;
+  if (!arr.length) {
+    return NaN;
+  }
   return sum(arr) / arr.length;
 }
 
 /** 样本方差 (ddof=1) 或总体方差 (ddof=0) */
 function variance(arr, ddof = 1) {
   const n = arr.length;
-  if (n - ddof <= 0) return NaN;
+  if (n - ddof <= 0) {
+    return NaN;
+  }
   const m = mean(arr);
   let s = 0;
-  for (let i = 0; i < n; i++) s += (arr[i] - m) * (arr[i] - m);
+  for (let i = 0; i < n; i++) {
+    s += (arr[i] - m) * (arr[i] - m);
+  }
   return s / (n - ddof);
 }
 
@@ -651,10 +675,16 @@ function std(arr, ddof = 1) {
 
 /** 线性插值分位数 (p in [0,1]) */
 function percentile(arr, p) {
-  if (!arr.length) return NaN;
+  if (!arr.length) {
+    return NaN;
+  }
   const sorted = arr.slice().sort((a, b) => a - b);
-  if (p <= 0) return sorted[0];
-  if (p >= 1) return sorted[sorted.length - 1];
+  if (p <= 0) {
+    return sorted[0];
+  }
+  if (p >= 1) {
+    return sorted[sorted.length - 1];
+  }
   const idx = (sorted.length - 1) * p;
   const lo = Math.floor(idx);
   const hi = Math.ceil(idx);
@@ -671,7 +701,9 @@ function median(arr) {
 function zscore(arr) {
   const m = mean(arr);
   const s = std(arr, 0);
-  if (!(s > 0)) return arr.map(() => 0);
+  if (!(s > 0)) {
+    return arr.map(() => 0);
+  }
   return arr.map((x) => (x - m) / s);
 }
 
@@ -683,9 +715,13 @@ function rank(arr) {
   let i = 0;
   while (i < n) {
     let j = i;
-    while (j + 1 < n && idx[j + 1].v === idx[i].v) j++;
+    while (j + 1 < n && idx[j + 1].v === idx[i].v) {
+      j++;
+    }
     const avg = (i + j) / 2 + 1; // 1-based average rank
-    for (let k = i; k <= j; k++) out[idx[k].i] = avg;
+    for (let k = i; k <= j; k++) {
+      out[idx[k].i] = avg;
+    }
     i = j + 1;
   }
   return out;
@@ -694,7 +730,9 @@ function rank(arr) {
 /** Pearson 相关系数 */
 function pearson(a, b) {
   const n = a.length;
-  if (n < 2 || n !== b.length) return NaN;
+  if (n < 2 || n !== b.length) {
+    return NaN;
+  }
   const ma = mean(a);
   const mb = mean(b);
   let num = 0;
@@ -706,7 +744,9 @@ function pearson(a, b) {
     db += (b[i] - mb) * (b[i] - mb);
   }
   const den = Math.sqrt(da * db);
-  if (!(den > 0)) return NaN;
+  if (!(den > 0)) {
+    return NaN;
+  }
   return num / den;
 }
 
@@ -717,7 +757,9 @@ function spearman(a, b) {
 
 /** 稳健 winsorize：基于中位数 + MAD 截尾 (k 倍 MAD) */
 function winsorize(arr, k = 2.5) {
-  if (!arr.length) return arr.slice();
+  if (!arr.length) {
+    return arr.slice();
+  }
   const med = median(arr);
   const absDev = arr.map((x) => Math.abs(x - med));
   const mad = median(absDev) || 1e-12;
@@ -733,8 +775,12 @@ function rollingMean(arr, window) {
   let s = 0;
   for (let i = 0; i < arr.length; i++) {
     s += arr[i];
-    if (i >= window) s -= arr[i - window];
-    if (i >= window - 1) out[i] = s / window;
+    if (i >= window) {
+      s -= arr[i - window];
+    }
+    if (i >= window - 1) {
+      out[i] = s / window;
+    }
   }
   return out;
 }
@@ -771,9 +817,13 @@ function deepClone(obj) {
 /** 键控均值：对象 {key: number} -> values 的均值 */
 function meanOfMap(map) {
   const keys = Object.keys(map);
-  if (!keys.length) return NaN;
+  if (!keys.length) {
+    return NaN;
+  }
   let s = 0;
-  for (const k of keys) s += map[k];
+  for (const k of keys) {
+    s += map[k];
+  }
   return s / keys.length;
 }
 
@@ -795,7 +845,7 @@ function buildIndex(contracts) {
   const idx = {};
   for (const code of Object.keys(contracts)) {
     const m = new Map();
-    for (const b of contracts[code]) m.set(b.date, b);
+    for (const b of contracts[code]) {m.set(b.date, b);}
     idx[code] = m;
   }
   return idx;
@@ -803,8 +853,8 @@ function buildIndex(contracts) {
 
 /** 排序优先级：持仓量 desc -> 成交量 desc -> 合约代码(交割月) asc */
 function better(a, b) {
-  if (a.oi !== b.oi) return a.oi > b.oi;
-  if (a.vol !== b.vol) return a.vol > b.vol;
+  if (a.oi !== b.oi) {return a.oi > b.oi;}
+  if (a.vol !== b.vol) {return a.vol > b.vol;}
   return a.code < b.code;
 }
 
@@ -826,7 +876,7 @@ function buildMainSub(dates, contracts, opts = {}) {
     const cands = [];
     for (const c of codes) {
       const b = idx[c].get(d);
-      if (b) cands.push({ code: c, oi: b.openInterest, vol: b.volume, bar: b });
+      if (b) {cands.push({ code: c, oi: b.openInterest, vol: b.volume, bar: b });}
     }
     if (!cands.length) {
       mainByDate[d] = null;
@@ -851,7 +901,7 @@ function buildMainSub(dates, contracts, opts = {}) {
     currentMain = main;
     let sub = null;
     for (const cand of cands) {
-      if (cand.code === main) continue;
+      if (cand.code === main) {continue;}
       sub = cand.code;
       break;
     }
@@ -874,8 +924,8 @@ function backAdjustFactors(dates, codeByDate, getClose) {
     if (cur && nxt && cur !== nxt) {
       const cn = getClose(nxt, dates[t]);
       const co = getClose(cur, dates[t]);
-      if (cn != null && co != null && co > 0) factors[t] = factors[t + 1] * (cn / co);
-      else factors[t] = factors[t + 1];
+      if (cn != null && co != null && co > 0) {factors[t] = factors[t + 1] * (cn / co);}
+      else {factors[t] = factors[t + 1];}
     } else {
       factors[t] = factors[t + 1];
     }
@@ -1001,13 +1051,19 @@ const FACTOR_SIGNS = { momentum: 1, liquidity: 1, volume: 1, skewness: 1, rollYi
 /** 样本偏度 */
 function skewness(arr) {
   const n = arr.length;
-  if (n < 3) return NaN;
+  if (n < 3) {
+    return NaN;
+  }
   const m = mean(arr);
   const s = std(arr, 0);
-  if (!(s > 0)) return NaN;
+  if (!(s > 0)) {
+    return NaN;
+  }
   let acc = 0;
-  for (let i = 0; i < n; i++) acc += Math.pow(arr[i] - m, 3);
-  return (acc / n) / Math.pow(s, 3);
+  for (let i = 0; i < n; i++) {
+    acc += Math.pow(arr[i] - m, 3);
+  }
+  return acc / n / Math.pow(s, 3);
 }
 
 function asArray(n) {
@@ -1043,19 +1099,32 @@ function computeVarietyFactors(ds, code, params) {
   for (let t = 1; t < T; t++) {
     const a = series.mainAdj[t];
     const b = series.mainAdj[t - 1];
-    if (a != null && b != null && b > 0) ret[t] = a / b - 1;
+    if (a != null && b != null && b > 0) {
+      ret[t] = a / b - 1;
+    }
   }
 
   for (let t = 0; t < T; t++) {
     // ---- momentum (skip 近 1 月) ----
     const iEnd = t - mom.skip;
     const iStart = t - mom.lookback;
-    if (iStart >= 0 && iEnd >= 0 && series.mainAdj[iEnd] != null && series.mainAdj[iStart] != null && series.mainAdj[iStart] > 0) {
+    if (
+      iStart >= 0 &&
+      iEnd >= 0 &&
+      series.mainAdj[iEnd] != null &&
+      series.mainAdj[iStart] != null &&
+      series.mainAdj[iStart] > 0
+    ) {
       out.momentum[t] = series.mainAdj[iEnd] / series.mainAdj[iStart] - 1;
     }
 
     // ---- liquidity: turnover & Amihud ----
-    if (series.mainRaw[t] != null && series.mainVol[t] != null && series.mainOi[t] != null && series.mainOi[t] > 0) {
+    if (
+      series.mainRaw[t] != null &&
+      series.mainVol[t] != null &&
+      series.mainOi[t] != null &&
+      series.mainOi[t] > 0
+    ) {
       out.turnover[t] = (series.mainRaw[t] * series.mainVol[t]) / series.mainOi[t];
     }
     const w = liq.amihudWindow;
@@ -1063,13 +1132,18 @@ function computeVarietyFactors(ds, code, params) {
       let acc = 0;
       let cnt = 0;
       for (let i = t - w + 1; i <= t; i++) {
-        const dolVol = series.mainRaw[i] != null && series.mainVol[i] != null ? series.mainRaw[i] * series.mainVol[i] : null;
+        const dolVol =
+          series.mainRaw[i] != null && series.mainVol[i] != null
+            ? series.mainRaw[i] * series.mainVol[i]
+            : null;
         if (ret[i] != null && dolVol != null && dolVol > 0) {
           acc += Math.abs(ret[i]) / dolVol;
           cnt++;
         }
       }
-      if (cnt > 0) out.amihud[t] = acc / cnt;
+      if (cnt > 0) {
+        out.amihud[t] = acc / cnt;
+      }
     }
     out.liquidity[t] = out.amihud[t] != null ? -out.amihud[t] : null;
 
@@ -1079,17 +1153,28 @@ function computeVarietyFactors(ds, code, params) {
       let s = 0;
       let cnt = 0;
       for (let i = t - vw; i < t; i++) {
-        if (series.mainVol[i] != null) { s += series.mainVol[i]; cnt++; }
+        if (series.mainVol[i] != null) {
+          s += series.mainVol[i];
+          cnt++;
+        }
       }
-      if (cnt > 0 && s > 0) out.volume[t] = series.mainVol[t] / (s / cnt) - 1;
+      if (cnt > 0 && s > 0) {
+        out.volume[t] = series.mainVol[t] / (s / cnt) - 1;
+      }
     }
 
     // ---- skewness ----
     const sw = sk.window;
     if (t >= sw) {
       const win = [];
-      for (let i = t - sw + 1; i <= t; i++) if (ret[i] != null) win.push(ret[i]);
-      if (win.length >= 10) out.skewness[t] = skewness(win);
+      for (let i = t - sw + 1; i <= t; i++) {
+        if (ret[i] != null) {
+          win.push(ret[i]);
+        }
+      }
+      if (win.length >= 10) {
+        out.skewness[t] = skewness(win);
+      }
     }
 
     // ---- roll yield ----
@@ -1114,18 +1199,27 @@ function computeVarietyFactors(ds, code, params) {
  */
 function crossSectionalZ(dates, varieties, rawByCode, winsorizeK) {
   const out = {};
-  for (const code of varieties) out[code] = asArray(dates.length);
+  for (const code of varieties) {
+    out[code] = asArray(dates.length);
+  }
   for (let t = 0; t < dates.length; t++) {
     const vals = [];
     const idx = [];
     for (const code of varieties) {
       const v = rawByCode[code][t];
-      if (v != null && Number.isFinite(v)) { vals.push(v); idx.push(code); }
+      if (v != null && Number.isFinite(v)) {
+        vals.push(v);
+        idx.push(code);
+      }
     }
-    if (vals.length < 2) continue;
+    if (vals.length < 2) {
+      continue;
+    }
     const w = winsorize(vals, winsorizeK);
     const z = zscore(w);
-    for (let k = 0; k < idx.length; k++) out[idx[k]][t] = z[k];
+    for (let k = 0; k < idx.length; k++) {
+      out[idx[k]][t] = z[k];
+    }
   }
   return out;
 }
@@ -1149,7 +1243,9 @@ class FactorEngine {
     const aux = { turnover: {}, amihud: {} };
     for (const code of varieties) {
       const f = computeVarietyFactors(ds, code, p);
-      for (const k of ['momentum', 'liquidity', 'volume', 'skewness', 'rollYield']) raw[k][code] = f[k];
+      for (const k of ['momentum', 'liquidity', 'volume', 'skewness', 'rollYield']) {
+        raw[k][code] = f[k];
+      }
       aux.turnover[code] = f.turnover;
       aux.amihud[code] = f.amihud;
     }
@@ -1176,20 +1272,20 @@ __def("strategy/strategyEngine", function(__req, __exports) {
 const DEFAULT_STRATEGY_CONFIG = {
   factors: ['momentum', 'liquidity', 'volume', 'skewness', 'rollYield'],
   factorSigns: { momentum: 1, liquidity: 1, volume: 1, skewness: 1, rollYield: 1 },
-  combine: 'equal',          // 'equal' | 'ic' | 'custom'
-  factorWeights: null,       // 自定义权重 {factor: w}；combine='custom' 时生效
-  icWindow: 60,              // IC 加权：滚动窗口（交易日）
-  icHorizon: 5,              // IC 加权：前瞻收益天数（已做滞后，无未来函数）
+  combine: 'equal', // 'equal' | 'ic' | 'custom'
+  factorWeights: null, // 自定义权重 {factor: w}；combine='custom' 时生效
+  icWindow: 60, // IC 加权：滚动窗口（交易日）
+  icHorizon: 5, // IC 加权：前瞻收益天数（已做滞后，无未来函数）
   longCount: 5,
   shortCount: 5,
-  mode: 'longShort',         // 'longShort'(中性) | 'longOnly'
-  weighting: 'equal',        // 'equal' | 'score'
-  neutral: true,             // 方向中性（多空名义额相等）
-  rebalance: 'monthly',      // 'monthly' | 'weekly'
-  rebalanceDays: 21,         // 月度=21，周度=5
-  buffer: 2,                 // 缓冲带（排名容忍）
-  grossExposure: 1.0,        // 总名义敞口 / 权益
-  warmup: 120,               // 起始调仓所需最小历史
+  mode: 'longShort', // 'longShort'(中性) | 'longOnly'
+  weighting: 'equal', // 'equal' | 'score'
+  neutral: true, // 方向中性（多空名义额相等）
+  rebalance: 'monthly', // 'monthly' | 'weekly'
+  rebalanceDays: 21, // 月度=21，周度=5
+  buffer: 2, // 缓冲带（排名容忍）
+  grossExposure: 1.0, // 总名义敞口 / 权益
+  warmup: 120, // 起始调仓所需最小历史
 };
 
 /**
@@ -1201,20 +1297,26 @@ function compositeScores(panel, config) {
   const signs = Object.assign({}, config.factorSigns || {});
   const weights = factorWeights(panel, config);
   const score = {};
-  for (const code of varieties) score[code] = new Array(dates.length).fill(null);
+  for (const code of varieties) {
+    score[code] = new Array(dates.length).fill(null);
+  }
   for (let t = 0; t < dates.length; t++) {
     for (const code of varieties) {
       let s = 0;
       let cnt = 0;
       for (const f of factors) {
         const zv = z[f] && z[f][code] ? z[f][code][t] : null;
-        if (zv == null) continue;
+        if (zv == null) {
+          continue;
+        }
         const sign = signs[f] != null ? signs[f] : 1;
         const w = weights[f] != null ? weights[f] : 0;
         s += sign * w * zv;
         cnt++;
       }
-      if (cnt > 0) score[code][t] = s;
+      if (cnt > 0) {
+        score[code][t] = s;
+      }
     }
   }
   return score;
@@ -1227,17 +1329,30 @@ function factorWeights(panel, config) {
   const out = {};
   if (config.combine === 'custom' && config.factorWeights) {
     let s = 0;
-    for (const f of factors) s += Math.abs(config.factorWeights[f] || 0);
-    for (const f of factors) out[f] = s > 0 ? (config.factorWeights[f] || 0) / s : 1 / n;
+    for (const f of factors) {
+      s += Math.abs(config.factorWeights[f] || 0);
+    }
+    for (const f of factors) {
+      out[f] = s > 0 ? (config.factorWeights[f] || 0) / s : 1 / n;
+    }
     return out;
   }
   if (config.combine === 'ic' && panel._icWeights) {
     const ic = panel._icWeights;
     let s = 0;
-    for (const f of factors) s += Math.abs(ic[f] || 0);
-    if (s > 0) { for (const f of factors) out[f] = Math.abs(ic[f] || 0) / s; return out; }
+    for (const f of factors) {
+      s += Math.abs(ic[f] || 0);
+    }
+    if (s > 0) {
+      for (const f of factors) {
+        out[f] = Math.abs(ic[f] || 0) / s;
+      }
+      return out;
+    }
   }
-  for (const f of factors) out[f] = 1 / n;
+  for (const f of factors) {
+    out[f] = 1 / n;
+  }
   return out;
 }
 
@@ -1261,7 +1376,9 @@ function computeRollingIC(panel, ds, config) {
   // 每个因子、每个调仓日 t：在 [t-window, t-horizon] 内与 fwd 的截面 spearman
   const factors = config.factors || DEFAULT_STRATEGY_CONFIG.factors;
   const icByFactor = {};
-  for (const f of factors) icByFactor[f] = new Array(T).fill(null);
+  for (const f of factors) {
+    icByFactor[f] = new Array(T).fill(null);
+  }
   for (let t = window; t < T; t++) {
     for (const f of factors) {
       const xs = [];
@@ -1270,7 +1387,10 @@ function computeRollingIC(panel, ds, config) {
         for (const code of varieties) {
           const zz = z[f][code][tau];
           const rr = fwd[code][tau];
-          if (zz != null && rr != null && Number.isFinite(zz) && Number.isFinite(rr)) { xs.push(zz); ys.push(rr); }
+          if (zz != null && rr != null && Number.isFinite(zz) && Number.isFinite(rr)) {
+            xs.push(zz);
+            ys.push(rr);
+          }
         }
       }
       if (xs.length >= 10) {
@@ -1303,7 +1423,12 @@ class StrategyEngine {
         const arr = icByFactor[f];
         // 取最近一个非空 IC 的 |IC| 作为权重
         let w = 0;
-        for (let t = arr.length - 1; t >= 0; t--) { if (arr[t] != null) { w = Math.abs(arr[t]); break; } }
+        for (let t = arr.length - 1; t >= 0; t--) {
+          if (arr[t] != null) {
+            w = Math.abs(arr[t]);
+            break;
+          }
+        }
         panel._icWeights[f] = w || 1 / factors.length;
       }
     }
@@ -1311,9 +1436,11 @@ class StrategyEngine {
     const score = compositeScores(panel, cfg);
 
     // 调仓日序列（交易日计数）
-    const rebDays = cfg.rebalance === 'weekly' ? (cfg.rebalanceDays || 5) : (cfg.rebalanceDays || 21);
+    const rebDays = cfg.rebalance === 'weekly' ? cfg.rebalanceDays || 5 : cfg.rebalanceDays || 21;
     const rebalanceDates = [];
-    for (let t = cfg.warmup; t < dates.length; t += rebDays) rebalanceDates.push(dates[t]);
+    for (let t = cfg.warmup; t < dates.length; t += rebDays) {
+      rebalanceDates.push(dates[t]);
+    }
 
     const targets = {};
     let prevLong = new Set();
@@ -1324,9 +1451,14 @@ class StrategyEngine {
       const ranked = [];
       for (const code of varieties) {
         const s = score[code][t];
-        if (s != null && Number.isFinite(s)) ranked.push({ code, s });
+        if (s != null && Number.isFinite(s)) {
+          ranked.push({ code, s });
+        }
       }
-      if (ranked.length < Math.max(cfg.longCount, cfg.shortCount) + 1) { targets[date] = {}; continue; }
+      if (ranked.length < Math.max(cfg.longCount, cfg.shortCount) + 1) {
+        targets[date] = {};
+        continue;
+      }
       ranked.sort((a, b) => b.s - a.s);
 
       const longNames = selectSide(ranked, 'long', cfg, prevLong);
@@ -1351,41 +1483,58 @@ class StrategyEngine {
 function selectSide(ranked, side, cfg, prev) {
   const n = side === 'long' ? cfg.longCount : cfg.shortCount;
   const buffer = cfg.buffer || 0;
-  const pool = side === 'long'
-    ? ranked.slice(0, n + buffer)
-    : ranked.slice(-(n + buffer)).reverse();
+  const pool =
+    side === 'long' ? ranked.slice(0, n + buffer) : ranked.slice(-(n + buffer)).reverse();
   const poolSet = new Set(pool.map((x) => x.code));
   const kept = pool.filter((x) => prev.has(x.code)).slice(0, n);
   const keptSet = new Set(kept.map((x) => x.code));
   const filled = [];
   for (const x of pool) {
-    if (filled.length >= n - kept.length) break;
-    if (!keptSet.has(x.code)) filled.push(x);
+    if (filled.length >= n - kept.length) {
+      break;
+    }
+    if (!keptSet.has(x.code)) {
+      filled.push(x);
+    }
   }
   const chosen = kept.concat(filled).map((x) => x.code);
   // 若仍不足 n，从 pool 外补
   if (chosen.length < n) {
     const rest = side === 'long' ? ranked : ranked.slice().reverse();
     for (const x of rest) {
-      if (chosen.length >= n) break;
-      if (!chosen.includes(x.code) && poolSet.has(x.code)) continue;
-      if (!chosen.includes(x.code)) chosen.push(x.code);
+      if (chosen.length >= n) {
+        break;
+      }
+      if (!chosen.includes(x.code) && poolSet.has(x.code)) {
+        continue;
+      }
+      if (!chosen.includes(x.code)) {
+        chosen.push(x.code);
+      }
     }
   }
   return chosen.slice(0, n);
 }
 
 function assignWeights(weights, names, sideGross, cfg, score, t) {
-  if (!names.length) return;
+  if (!names.length) {
+    return;
+  }
   if (cfg.weighting === 'score') {
     let s = 0;
-    for (const code of names) s += Math.abs(score[code][t] || 0);
+    for (const code of names) {
+      s += Math.abs(score[code][t] || 0);
+    }
     if (s > 0) {
-      for (const code of names) weights[code] = (sideGross * Math.abs(score[code][t] || 0)) / s;
+      for (const code of names) {
+        weights[code] = (sideGross * Math.abs(score[code][t] || 0)) / s;
+      }
       return;
     }
   }
-  for (const code of names) weights[code] = sideGross / names.length;
+  for (const code of names) {
+    weights[code] = sideGross / names.length;
+  }
 }
 
   Object.assign(__exports, { DEFAULT_STRATEGY_CONFIG, compositeScores, factorWeights, computeRollingIC, StrategyEngine });
@@ -1400,11 +1549,11 @@ __def("backtest/backtestEngine", function(__req, __exports) {
 
 const DEFAULT_BACKTEST_CONFIG = {
   initialCapital: 10_000_000,
-  commissionRate: 0.0002,   // 单边手续费率（按名义额）
-  slippageTicks: 1,         // 单边滑点（跳）
-  executionDelay: 1,        // 成交延迟（交易日）：1 = 次日收盘成交
-  maxLeverage: 1.5,         // 总保证金 / 权益 上限
-  useAdjPrice: true,        // 盈亏按后复权主连续价（消除展期跳空）
+  commissionRate: 0.0002, // 单边手续费率（按名义额）
+  slippageTicks: 1, // 单边滑点（跳）
+  executionDelay: 1, // 成交延迟（交易日）：1 = 次日收盘成交
+  maxLeverage: 1.5, // 总保证金 / 权益 上限
+  useAdjPrice: true, // 盈亏按后复权主连续价（消除展期跳空）
 };
 
 class BacktestEngine {
@@ -1426,7 +1575,11 @@ class BacktestEngine {
     for (const code of ds.codes) {
       const s = S(code);
       let li = null;
-      for (let t = 0; t < T; t++) if (s.mainAdj[t] != null) li = t;
+      for (let t = 0; t < T; t++) {
+        if (s.mainAdj[t] != null) {
+          li = t;
+        }
+      }
       lastValidIdx[code] = li;
     }
 
@@ -1434,7 +1587,9 @@ class BacktestEngine {
     const rollByDate = {};
     for (const code of ds.codes) {
       const m = new Map();
-      for (const r of S(code).rolls) m.set(r.date, r);
+      for (const r of S(code).rolls) {
+        m.set(r.date, r);
+      }
       rollByDate[code] = m;
     }
 
@@ -1461,8 +1616,13 @@ class BacktestEngine {
         const meta = metaOf(code);
         const adjT = s.mainAdj[t];
         const rawT = s.mainRaw[t];
-        if (adjT != null) floatingPnL += pos.dir * (adjT - pos.entryAdj) * meta.mult * pos.lots;
-        if (rawT != null) { usedMargin += pos.lots * rawT * meta.mult * meta.margin; gross += pos.lots * rawT * meta.mult; }
+        if (adjT != null) {
+          floatingPnL += pos.dir * (adjT - pos.entryAdj) * meta.mult * pos.lots;
+        }
+        if (rawT != null) {
+          usedMargin += pos.lots * rawT * meta.mult * meta.margin;
+          gross += pos.lots * rawT * meta.mult;
+        }
       }
       const equity = cash + floatingPnL;
       return { floatingPnL, usedMargin, gross, equity, available: equity - usedMargin };
@@ -1472,9 +1632,14 @@ class BacktestEngine {
     const liquidateDelisted = (t, date) => {
       for (const code of Object.keys(positions)) {
         const s = S(code);
-        if (s.mainAdj[t] != null) continue;
+        if (s.mainAdj[t] != null) {
+          continue;
+        }
         const li = lastValidIdx[code];
-        if (li == null) { delete positions[code]; continue; }
+        if (li == null) {
+          delete positions[code];
+          continue;
+        }
         const pos = positions[code];
         const meta = metaOf(code);
         const adjP = s.mainAdj[li];
@@ -1482,7 +1647,20 @@ class BacktestEngine {
         const pnl = pos.dir * (adjP - pos.entryAdj) * meta.mult * pos.lots;
         const cost = legCost(meta, rawP, pos.lots);
         cash += pnl - cost;
-        trades.push({ date, code, side: 'close', dir: pos.dir, lots: pos.lots, price: rawP, adjPrice: adjP, notional: rawP * meta.mult * pos.lots, cost, pnl, contract: pos.contract, reason: 'delist' });
+        trades.push({
+          date,
+          code,
+          side: 'close',
+          dir: pos.dir,
+          lots: pos.lots,
+          price: rawP,
+          adjPrice: adjP,
+          notional: rawP * meta.mult * pos.lots,
+          cost,
+          pnl,
+          contract: pos.contract,
+          reason: 'delist',
+        });
         delete positions[code];
       }
     };
@@ -1491,7 +1669,9 @@ class BacktestEngine {
     const processRolls = (t, date) => {
       for (const code of Object.keys(positions)) {
         const roll = rollByDate[code] && rollByDate[code].get(date);
-        if (!roll) continue;
+        if (!roll) {
+          continue;
+        }
         const pos = positions[code];
         const meta = metaOf(code);
         const oldRaw = roll.fromClose != null ? roll.fromClose : pos.entryRaw;
@@ -1514,20 +1694,54 @@ class BacktestEngine {
       const curLots = cur ? cur.lots : 0;
       const curDir = cur ? cur.dir : 0;
 
-      if (targetLots === 0 && curLots === 0) return;
+      if (targetLots === 0 && curLots === 0) {
+        return;
+      }
       if (targetLots === 0) {
         const pnl = curDir * (adjT - cur.entryAdj) * meta.mult * curLots;
         const cost = legCost(meta, rawT, curLots);
         cash += pnl - cost;
-        trades.push({ date, code, side: 'close', dir: curDir, lots: curLots, price: rawT, adjPrice: adjT, notional: rawT * meta.mult * curLots, cost, pnl, contract: cur.contract, reason: 'rebalance' });
+        trades.push({
+          date,
+          code,
+          side: 'close',
+          dir: curDir,
+          lots: curLots,
+          price: rawT,
+          adjPrice: adjT,
+          notional: rawT * meta.mult * curLots,
+          cost,
+          pnl,
+          contract: cur.contract,
+          reason: 'rebalance',
+        });
         delete positions[code];
         return;
       }
       if (curLots === 0) {
         const cost = legCost(meta, rawT, targetLots);
         cash -= cost;
-        positions[code] = { lots: targetLots, dir: targetDir, entryAdj: adjT, entryRaw: rawT, contract: targetContract };
-        trades.push({ date, code, side: 'open', dir: targetDir, lots: targetLots, price: rawT, adjPrice: adjT, notional: rawT * meta.mult * targetLots, cost, pnl: 0, contract: targetContract, reason: 'rebalance' });
+        positions[code] = {
+          lots: targetLots,
+          dir: targetDir,
+          entryAdj: adjT,
+          entryRaw: rawT,
+          contract: targetContract,
+        };
+        trades.push({
+          date,
+          code,
+          side: 'open',
+          dir: targetDir,
+          lots: targetLots,
+          price: rawT,
+          adjPrice: adjT,
+          notional: rawT * meta.mult * targetLots,
+          cost,
+          pnl: 0,
+          contract: targetContract,
+          reason: 'rebalance',
+        });
         return;
       }
       if (curDir === targetDir) {
@@ -1536,19 +1750,52 @@ class BacktestEngine {
           const cost = legCost(meta, rawT, add);
           cash -= cost;
           positions[code] = {
-            lots: targetLots, dir: targetDir,
+            lots: targetLots,
+            dir: targetDir,
             entryAdj: (cur.lots * cur.entryAdj + add * adjT) / targetLots,
             entryRaw: (cur.lots * cur.entryRaw + add * rawT) / targetLots,
             contract: targetContract,
           };
-          trades.push({ date, code, side: 'add', dir: targetDir, lots: add, price: rawT, adjPrice: adjT, notional: rawT * meta.mult * add, cost, pnl: 0, contract: targetContract, reason: 'rebalance' });
+          trades.push({
+            date,
+            code,
+            side: 'add',
+            dir: targetDir,
+            lots: add,
+            price: rawT,
+            adjPrice: adjT,
+            notional: rawT * meta.mult * add,
+            cost,
+            pnl: 0,
+            contract: targetContract,
+            reason: 'rebalance',
+          });
         } else if (targetLots < curLots) {
           const close = curLots - targetLots;
           const pnl = curDir * (adjT - cur.entryAdj) * meta.mult * close;
           const cost = legCost(meta, rawT, close);
           cash += pnl - cost;
-          positions[code] = { lots: targetLots, dir: targetDir, entryAdj: cur.entryAdj, entryRaw: cur.entryRaw, contract: targetContract };
-          trades.push({ date, code, side: 'reduce', dir: curDir, lots: close, price: rawT, adjPrice: adjT, notional: rawT * meta.mult * close, cost, pnl, contract: cur.contract, reason: 'rebalance' });
+          positions[code] = {
+            lots: targetLots,
+            dir: targetDir,
+            entryAdj: cur.entryAdj,
+            entryRaw: cur.entryRaw,
+            contract: targetContract,
+          };
+          trades.push({
+            date,
+            code,
+            side: 'reduce',
+            dir: curDir,
+            lots: close,
+            price: rawT,
+            adjPrice: adjT,
+            notional: rawT * meta.mult * close,
+            cost,
+            pnl,
+            contract: cur.contract,
+            reason: 'rebalance',
+          });
         }
         return;
       }
@@ -1557,15 +1804,38 @@ class BacktestEngine {
       const costClose = legCost(meta, rawT, curLots);
       const costOpen = legCost(meta, rawT, targetLots);
       cash += pnlClose - costClose - costOpen;
-      positions[code] = { lots: targetLots, dir: targetDir, entryAdj: adjT, entryRaw: rawT, contract: targetContract };
-      trades.push({ date, code, side: 'flip', dir: curDir + '->' + targetDir, lots: curLots, lotsNew: targetLots, price: rawT, adjPrice: adjT, notional: rawT * meta.mult * (curLots + targetLots), cost: costClose + costOpen, pnl: pnlClose, contract: targetContract, reason: 'rebalance' });
+      positions[code] = {
+        lots: targetLots,
+        dir: targetDir,
+        entryAdj: adjT,
+        entryRaw: rawT,
+        contract: targetContract,
+      };
+      trades.push({
+        date,
+        code,
+        side: 'flip',
+        dir: `${curDir}->${targetDir}`,
+        lots: curLots,
+        lotsNew: targetLots,
+        price: rawT,
+        adjPrice: adjT,
+        notional: rawT * meta.mult * (curLots + targetLots),
+        cost: costClose + costOpen,
+        pnl: pnlClose,
+        contract: targetContract,
+        reason: 'rebalance',
+      });
     };
 
     // 执行调仓
     const executeRebalance = (t, date, targets) => {
       const st = stats(t);
-      if (st.equity <= 0) { // 爆仓：全部平仓
-        for (const code of Object.keys(positions)) tradeTo(date, t, code, 0, 0, null);
+      if (st.equity <= 0) {
+        // 爆仓：全部平仓
+        for (const code of Object.keys(positions)) {
+          tradeTo(date, t, code, 0, 0, null);
+        }
         return;
       }
       // 目标手数
@@ -1575,10 +1845,14 @@ class BacktestEngine {
         const meta = metaOf(code);
         const s = S(code);
         const rawT = s.mainRaw[t];
-        if (rawT == null || !(rawT > 0)) continue;
+        if (rawT == null || !(rawT > 0)) {
+          continue;
+        }
         const notional = Math.abs(w) * st.equity;
         const lots = Math.floor(notional / (rawT * meta.mult));
-        if (lots <= 0) continue;
+        if (lots <= 0) {
+          continue;
+        }
         desired[code] = { lots, dir: w > 0 ? 1 : -1, contract: s.mainCode[date] };
       }
       // 保证金约束：总保证金 <= 权益 * maxLeverage
@@ -1591,7 +1865,9 @@ class BacktestEngine {
       const cap = st.equity * (cfg.maxLeverage || 1.5);
       if (totalMargin > cap) {
         const f = cap / totalMargin;
-        for (const code of Object.keys(desired)) desired[code].lots = Math.floor(desired[code].lots * f);
+        for (const code of Object.keys(desired)) {
+          desired[code].lots = Math.floor(desired[code].lots * f);
+        }
       }
       // 交易到目标
       const allCodes = new Set([...Object.keys(positions), ...Object.keys(desired)]);
@@ -1662,7 +1938,7 @@ class BacktestEngine {
   Object.assign(__exports, { DEFAULT_BACKTEST_CONFIG, BacktestEngine });
 });
 __def("performance/performanceEngine", function(__req, __exports) {
-  const { mean, std } = __req("utils");
+  const { std } = __req("utils");
 /**
  * performanceEngine.js — 绩效与基准对比 (S5: PerformanceEngine "dll")。
  * 指标：年化收益率、Sharpe、最大回撤、卡玛、波动率、胜率（公式定义见 docs/06）。
@@ -1683,7 +1959,7 @@ const DEFAULT_PERF_CONFIG = {
   benchmarkAnnual: 0.15,
   benchmarkName: DEFAULT_BENCHMARK.name,
   benchmarkNote: DEFAULT_BENCHMARK.note,
-  verdictThreshold: 0.02,   // ±2pp 判定"接近"
+  verdictThreshold: 0.02, // ±2pp 判定"接近"
   tradingDaysPerYear: 252,
 };
 
@@ -1699,14 +1975,17 @@ class PerformanceEngine {
 
     const rets = [];
     for (let i = 1; i < nav.length; i++) {
-      if (nav[i] != null && nav[i - 1] != null && nav[i - 1] > 0) rets.push(nav[i] / nav[i - 1] - 1);
+      if (nav[i] != null && nav[i - 1] != null && nav[i - 1] > 0) {
+        rets.push(nav[i] / nav[i - 1] - 1);
+      }
     }
     const n = rets.length;
     const first = nav.find((x) => x != null);
     const last = nav[nav.length - 1] != null ? nav[nav.length - 1] : first;
     const totalReturn = first > 0 ? last / first - 1 : 0;
 
-    const annualizedReturn = n > 0 && first > 0 ? Math.pow(last / first, cfg.tradingDaysPerYear / n) - 1 : 0;
+    const annualizedReturn =
+      n > 0 && first > 0 ? Math.pow(last / first, cfg.tradingDaysPerYear / n) - 1 : 0;
     const volatility = n > 0 ? std(rets) * Math.sqrt(cfg.tradingDaysPerYear) : 0;
     const sharpe = volatility > 0 ? (annualizedReturn - cfg.riskFreeRate) / volatility : 0;
 
@@ -1714,10 +1993,16 @@ class PerformanceEngine {
     let peak = -Infinity;
     let maxDD = 0;
     for (const v of nav) {
-      if (v == null) continue;
-      if (v > peak) peak = v;
+      if (v == null) {
+        continue;
+      }
+      if (v > peak) {
+        peak = v;
+      }
       const dd = peak > 0 ? (peak - v) / peak : 0;
-      if (dd > maxDD) maxDD = dd;
+      if (dd > maxDD) {
+        maxDD = dd;
+      }
     }
     const calmar = maxDD > 0 ? annualizedReturn / maxDD : 0;
     const winRate = n > 0 ? rets.filter((r) => r > 0).length / n : 0;
@@ -1728,7 +2013,8 @@ class PerformanceEngine {
     const benchmarkFinal = benchmarkNav[nav.length - 1];
 
     const excess = annualizedReturn - annual;
-    const verdict = excess > cfg.verdictThreshold ? '跑赢' : excess < -cfg.verdictThreshold ? '跑输' : '接近';
+    const verdict =
+      excess > cfg.verdictThreshold ? '跑赢' : excess < -cfg.verdictThreshold ? '跑输' : '接近';
 
     return {
       dates,
