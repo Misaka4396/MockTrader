@@ -6,20 +6,21 @@ namespace MockTrader.Core
 {
     public sealed class FactorParams
     {
-        public int MomentumLookback = 120, MomentumSkip = 21;
-        public int AmihudWindow = 20;
-        public int VolumeRatioWindow = 20;
-        public int SkewWindow = 20;
-        public bool RollYieldAnnualize = true;
-        public double WinsorizeK = 2.5;
+        public int MomentumLookback { get; set; } = 120;
+        public int MomentumSkip { get; set; } = 21;
+        public int AmihudWindow { get; set; } = 20;
+        public int VolumeRatioWindow { get; set; } = 20;
+        public int SkewWindow { get; set; } = 20;
+        public bool RollYieldAnnualize { get; set; } = true;
+        public double WinsorizeK { get; set; } = 2.5;
     }
 
     public sealed class FactorPanel
     {
-        public List<string> Dates;
-        public List<string> Varieties;
-        public Dictionary<string, Dictionary<string, double?[]>> Raw; // factor -> code -> array
-        public Dictionary<string, Dictionary<string, double?[]>> Z;
+        public List<string> Dates { get; set; }
+        public List<string> Varieties { get; set; }
+        public Dictionary<string, Dictionary<string, double?[]>> Raw { get; set; } // factor -> code -> array
+        public Dictionary<string, Dictionary<string, double?[]>> Z { get; set; }
     }
 
     public static class FactorKeys

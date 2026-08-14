@@ -6,31 +6,40 @@ namespace MockTrader.Core
 {
     public sealed class PerformanceConfig
     {
-        public double RiskFreeRate = 0;
-        public double BenchmarkAnnual = 0.15;
-        public string BenchmarkName = "纳指100 长线年化";
-        public string BenchmarkNote = "基准为可配置常数（默认 15%，约 10 年口径）；非逐日曲线，仅代表长线收益率参照。";
-        public double VerdictThreshold = 0.02;
-        public int TradingDaysPerYear = 252;
+        public double RiskFreeRate { get; set; } = 0;
+        public double BenchmarkAnnual { get; set; } = 0.15;
+        public string BenchmarkName { get; set; } = "纳指100 长线年化";
+        public string BenchmarkNote { get; set; } = "基准为可配置常数（默认 15%，约 10 年口径）；非逐日曲线，仅代表长线收益率参照。";
+        public double VerdictThreshold { get; set; } = 0.02;
+        public int TradingDaysPerYear { get; set; } = 252;
     }
 
     public sealed class PerformanceResult
     {
-        public List<string> Dates;
-        public double[] Nav;
-        public double[] BenchmarkNav;
-        public Metrics M;
-        public Comparison Cmp;
+        public List<string> Dates { get; set; }
+        public double[] Nav { get; set; }
+        public double[] BenchmarkNav { get; set; }
+        public Metrics M { get; set; }
+        public Comparison Cmp { get; set; }
     }
     public sealed class Metrics
     {
-        public double TotalReturn, AnnualizedReturn, Volatility, Sharpe, MaxDrawdown, Calmar, WinRate;
-        public int NDays;
+        public double TotalReturn { get; set; }
+        public double AnnualizedReturn { get; set; }
+        public double Volatility { get; set; }
+        public double Sharpe { get; set; }
+        public double MaxDrawdown { get; set; }
+        public double Calmar { get; set; }
+        public double WinRate { get; set; }
+        public int NDays { get; set; }
     }
     public sealed class Comparison
     {
-        public double Excess, Threshold, StrategyAnnual, BenchmarkAnnual;
-        public string Verdict;
+        public double Excess { get; set; }
+        public double Threshold { get; set; }
+        public double StrategyAnnual { get; set; }
+        public double BenchmarkAnnual { get; set; }
+        public string Verdict { get; set; }
     }
 
     public sealed class PerformanceEngine

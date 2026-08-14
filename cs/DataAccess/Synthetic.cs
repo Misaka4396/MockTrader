@@ -5,14 +5,28 @@ namespace MockTrader.Data
 {
     public sealed class Bar
     {
-        public string Date;
-        public double Open, High, Low, Close, Settle;
-        public long Volume, OpenInterest;
+        public string Date { get; set; }
+        public double Open { get; set; }
+        public double High { get; set; }
+        public double Low { get; set; }
+        public double Close { get; set; }
+        public double Settle { get; set; }
+        public long Volume { get; set; }
+        public long OpenInterest { get; set; }
     }
 
     public sealed class SimParams
     {
-        public double Vol, Drift, CarryMean, CarryVol, Rho, SeasonAmp, OiPeak, OiSpread, VolBase, OiBase;
+        public double Vol { get; set; }
+        public double Drift { get; set; }
+        public double CarryMean { get; set; }
+        public double CarryVol { get; set; }
+        public double Rho { get; set; }
+        public double SeasonAmp { get; set; }
+        public double OiPeak { get; set; }
+        public double OiSpread { get; set; }
+        public double VolBase { get; set; }
+        public double OiBase { get; set; }
     }
 
     public static class Synthetic
@@ -60,6 +74,19 @@ namespace MockTrader.Data
 
         const double DT = 1.0 / 252.0;
 
+        // 价格/成交量合成噪声系数（与 JS 核心逐位一致，仅收敛为命名常量）
+        const double NoiseBasis = 0.0015;
+        const double NoiseDailyEps = 0.0006;
+        const double NoiseGap = 0.0008;
+        const double NoiseHighLow = 0.0006;
+        const double VolumeNoise = 0.25;
+        const double OiNoise = 0.02;
+        const double SpotMeanRevertKappa = 0.03;
+        const int WarmupDays = 260;
+        const double WarmupExtendFactor = 1.45;
+        const int ContractListLeadDays = -360;
+        const int ContractLastTradeLeadDays = -7;
+
         public static string ContractCode(string code, int year, int month)
             => code + year.ToString().Substring(2) + month.ToString("00");
 
@@ -84,7 +111,10 @@ namespace MockTrader.Data
 
         sealed class ContractSpec
         {
-            public string Code, Delivery, ListDate, LastTrade;
+            public string Code { get; set; }
+            public string Delivery { get; set; }
+            public string ListDate { get; set; }
+            public string LastTrade { get; set; }
         }
 
         public static Dictionary<string, List<Bar>> GenerateVariety(Variety meta, List<string> dates, string masterSeed)
@@ -94,8 +124,7 @@ namespace MockTrader.Data
             int N = dates.Count;
             string first = dates[0], last = dates[N - 1];
 
-            int warmupDays = 260;
-            string extStart = Util.AddDays(first, -(int)Math.Round(warmupDays * 1.45));
+            string extStart = Util.AddDays(first, -(int)Math.Round(WarmupDays * WarmupExtendFactor));
             var extDates = Util.TradingDates(extStart, last);
             int extN = extDates.Count;
             var idxOf = new Dictionary<string, int>();
@@ -103,7 +132,6 @@ namespace MockTrader.Data
 
             var logP = new double[extN];
             var carry = new double[extN];
-            double kappa = 0.03;
             double dailyVol = sim.Vol * Math.Sqrt(DT);
             double lp = Math.Log(meta.Ref);
             double c = sim.CarryMean;
@@ -115,7 +143,7 @@ namespace MockTrader.Data
                 if (i == 0) { logP[0] = lp; carry[0] = c; }
                 else
                 {
-                    lp = lp + sim.Drift * DT + seasonalDrift + kappa * (Math.Log(meta.Ref) - lp) * DT + dailyVol * rng.NextGaussian();
+                    lp = lp + sim.Drift * DT + seasonalDrift + SpotMeanRevertKappa * (Math.Log(meta.Ref) - lp) * DT + dailyVol * rng.NextGaussian();
                     c = sim.CarryMean + sim.Rho * (c - sim.CarryMean) + sim.CarryVol * Math.Sqrt(DT) * rng.NextGaussian();
                     logP[i] = lp; carry[i] = c;
                 }
@@ -134,8 +162,8 @@ namespace MockTrader.Data
                 foreach (int mm in months)
                 {
                     string del = DeliveryIso(y, mm);
-                    string listDate = Util.AddDays(del, -360);
-                    string lastTrade = Util.AddDays(del, -7);
+                    string listDate = Util.AddDays(del, ContractListLeadDays);
+                    string lastTrade = Util.AddDays(del, ContractLastTradeLeadDays);
                     if (string.CompareOrdinal(lastTrade, first) < 0 || string.CompareOrdinal(listDate, last) > 0) continue;
                     specs.Add(new ContractSpec { Code = ContractCode(meta.Code, y, mm), Delivery = del, ListDate = listDate, LastTrade = lastTrade });
                 }
@@ -145,7 +173,7 @@ namespace MockTrader.Data
             var contracts = new Dictionary<string, List<Bar>>();
             foreach (var con in specs)
             {
-                double basisC = 0.0015 * rng.NextGaussian();
+                double basisC = NoiseBasis * rng.NextGaussian();
                 var bars = new List<Bar>();
                 double? prevClose = null;
                 foreach (string d in dates)
@@ -156,18 +184,18 @@ namespace MockTrader.Data
                     double spot = Math.Exp(logP[i]);
                     double ttm = Math.Max(Util.DiffDays(d, con.Delivery), 1) / 365.0;
                     double fair = spot * Math.Exp(carry[i] * ttm) * (1.0 + basisC);
-                    double dailyEps = 0.0006 * rng.NextGaussian();
+                    double dailyEps = NoiseDailyEps * rng.NextGaussian();
                     double close = fair * (1.0 + dailyEps);
-                    double gapV = prevClose == null ? 0.0 : 0.0008 * rng.NextGaussian();
+                    double gapV = prevClose == null ? 0.0 : NoiseGap * rng.NextGaussian();
                     double open = prevClose == null ? close : prevClose.Value * (1.0 + gapV);
-                    double hnoise = 0.0006 * Math.Abs(rng.NextGaussian());
-                    double lnoise = 0.0006 * Math.Abs(rng.NextGaussian());
+                    double hnoise = NoiseHighLow * Math.Abs(rng.NextGaussian());
+                    double lnoise = NoiseHighLow * Math.Abs(rng.NextGaussian());
                     double high = Math.Max(open, close) * (1.0 + hnoise);
                     double low = Math.Min(open, close) * (1.0 - lnoise);
                     double m = ttm * 12.0;
                     double liq = VolShape(m, oiPeak, oiSpread);
-                    long volume = Math.Max(0, (long)Math.Floor(sim.VolBase * liq * (1.0 + 0.25 * rng.NextGaussian()) + 0.5));
-                    long oi = Math.Max(0, (long)Math.Floor(sim.OiBase * OiShape(m, oiPeak, oiSpread) * (1.0 + 0.02 * rng.NextGaussian()) + 0.5));
+                    long volume = Math.Max(0, (long)Math.Floor(sim.VolBase * liq * (1.0 + VolumeNoise * rng.NextGaussian()) + 0.5));
+                    long oi = Math.Max(0, (long)Math.Floor(sim.OiBase * OiShape(m, oiPeak, oiSpread) * (1.0 + OiNoise * rng.NextGaussian()) + 0.5));
                     double tick = meta.Tick;
                     bars.Add(new Bar
                     {

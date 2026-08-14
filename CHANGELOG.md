@@ -16,6 +16,11 @@
 
 - `src/web/`（app.js / worker.js）消除全部 `var`（改用 let/const，并修复 `worker` 未声明即使用的隐式全局缺陷）。
 - 全量 JS 代码按 Prettier 规范重排（行宽 100、单引号、尾逗号）；清理 13 处未使用导入。
+- **C# 移植版重构（P1 整改）**：9 个源码文件全部 public 可变字段改为自动属性（含多变量声明拆分、保留默认值）；
+  `Synthetic.cs` 价格/成交量合成噪声系数等魔法数字收敛为命名常量（`NoiseBasis`/`NoiseDailyEps`/`WarmupDays`/`ContractListLeadDays` 等 11 个）。
+  编译通过 + 数值一致性验证逐位不变（期末权益 9,164,404 / 450 笔 / 245 展期 / 年化 -2.78% / 结论「跑输」）。
+- **API 文档**：接入 TypeDoc（`npm run docs:api` 生成 docs/api，产物不入库），修复 `buildMainSub` JSDoc 兼容性。
+- **工具链修复**：lint-staged 排除 `dist/**`（构建产物不再被 eslint/prettier 改写）。
 
 ## [1.0.0] - 2026-08-14
 

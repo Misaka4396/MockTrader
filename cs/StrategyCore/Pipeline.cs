@@ -6,23 +6,25 @@ namespace MockTrader.Core
 {
     public sealed class PipelineOptions
     {
-        public string Start = "2022-01-03", End = "2024-12-31", MasterSeed = "mocktrader-default-seed";
-        public string CsvPath;
-        public List<string> Varieties;
-        public Action<string, double> OnProgress;
-        public FactorParams FactorParams = new FactorParams();
-        public StrategyConfig StrategyConfig = new StrategyConfig();
-        public BacktestConfig BacktestConfig = new BacktestConfig();
-        public PerformanceConfig PerformanceConfig = new PerformanceConfig();
+        public string Start { get; set; } = "2022-01-03";
+        public string End { get; set; } = "2024-12-31";
+        public string MasterSeed { get; set; } = "mocktrader-default-seed";
+        public string CsvPath { get; set; }
+        public List<string> Varieties { get; set; }
+        public Action<string, double> OnProgress { get; set; }
+        public FactorParams FactorParams { get; set; } = new FactorParams();
+        public StrategyConfig StrategyConfig { get; set; } = new StrategyConfig();
+        public BacktestConfig BacktestConfig { get; set; } = new BacktestConfig();
+        public PerformanceConfig PerformanceConfig { get; set; } = new PerformanceConfig();
     }
 
     public sealed class PipelineResult
     {
-        public DataAccess Ds;
-        public FactorPanel Panel;
-        public StrategyResult Strategy;
-        public BacktestResult Backtest;
-        public PerformanceResult Performance;
+        public DataAccess Ds { get; set; }
+        public FactorPanel Panel { get; set; }
+        public StrategyResult Strategy { get; set; }
+        public BacktestResult Backtest { get; set; }
+        public PerformanceResult Performance { get; set; }
     }
 
     public static class Pipeline

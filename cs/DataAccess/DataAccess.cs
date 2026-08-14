@@ -5,8 +5,9 @@ namespace MockTrader.Data
 {
     public sealed class ContractInfo
     {
-        public int Year, Month;
-        public string Delivery;
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public string Delivery { get; set; }
     }
 
     public sealed class DataAccess

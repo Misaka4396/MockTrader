@@ -7,28 +7,30 @@ namespace MockTrader.Core
 {
     public sealed class StrategyConfig
     {
-        public List<string> Factors = new List<string>(FactorKeys.All);
-        public Dictionary<string, int> FactorSigns = new Dictionary<string, int> { ["momentum"] = 1, ["liquidity"] = 1, ["volume"] = 1, ["skewness"] = 1, ["rollYield"] = 1 };
-        public string Combine = "equal";           // equal | ic | custom
-        public Dictionary<string, double> FactorWeights; // custom
-        public int IcWindow = 60, IcHorizon = 5;
-        public int LongCount = 5, ShortCount = 5;
-        public string Mode = "longShort";
-        public string Weighting = "equal";          // equal | score
-        public bool Neutral = true;
-        public string Rebalance = "monthly";
-        public int RebalanceDays = 21;
-        public int Buffer = 2;
-        public double GrossExposure = 1.0;
-        public int Warmup = 120;
+        public List<string> Factors { get; set; } = new List<string>(FactorKeys.All);
+        public Dictionary<string, int> FactorSigns { get; set; } = new Dictionary<string, int> { ["momentum"] = 1, ["liquidity"] = 1, ["volume"] = 1, ["skewness"] = 1, ["rollYield"] = 1 };
+        public string Combine { get; set; } = "equal";           // equal | ic | custom
+        public Dictionary<string, double> FactorWeights { get; set; } // custom
+        public int IcWindow { get; set; } = 60;
+        public int IcHorizon { get; set; } = 5;
+        public int LongCount { get; set; } = 5;
+        public int ShortCount { get; set; } = 5;
+        public string Mode { get; set; } = "longShort";
+        public string Weighting { get; set; } = "equal";          // equal | score
+        public bool Neutral { get; set; } = true;
+        public string Rebalance { get; set; } = "monthly";
+        public int RebalanceDays { get; set; } = 21;
+        public int Buffer { get; set; } = 2;
+        public double GrossExposure { get; set; } = 1.0;
+        public int Warmup { get; set; } = 120;
     }
 
     public sealed class StrategyResult
     {
-        public List<string> RebalanceDates;
-        public Dictionary<string, Dictionary<string, double>> Targets; // date -> code -> weight
-        public Dictionary<string, double?[]> Composite;                // code -> array
-        public StrategyConfig Config;
+        public List<string> RebalanceDates { get; set; }
+        public Dictionary<string, Dictionary<string, double>> Targets { get; set; } // date -> code -> weight
+        public Dictionary<string, double?[]> Composite { get; set; }                // code -> array
+        public StrategyConfig Config { get; set; }
     }
 
     public sealed class StrategyEngine

@@ -7,56 +7,81 @@ namespace MockTrader.Core
 {
     public sealed class BacktestConfig
     {
-        public double InitialCapital = 10_000_000;
-        public double CommissionRate = 0.0002;
-        public double SlippageTicks = 1;
-        public int ExecutionDelay = 1;
-        public double MaxLeverage = 1.5;
+        public double InitialCapital { get; set; } = 10_000_000;
+        public double CommissionRate { get; set; } = 0.0002;
+        public double SlippageTicks { get; set; } = 1;
+        public int ExecutionDelay { get; set; } = 1;
+        public double MaxLeverage { get; set; } = 1.5;
     }
 
     public sealed class Trade
     {
-        public string Date, Code, Side, Contract, Reason;
-        public int Dir, Lots, LotsNew;
-        public string DirLabel;
-        public double Price, AdjPrice, Notional, Cost, Pnl;
+        public string Date { get; set; }
+        public string Code { get; set; }
+        public string Side { get; set; }
+        public string Contract { get; set; }
+        public string Reason { get; set; }
+        public int Dir { get; set; }
+        public int Lots { get; set; }
+        public int LotsNew { get; set; }
+        public string DirLabel { get; set; }
+        public double Price { get; set; }
+        public double AdjPrice { get; set; }
+        public double Notional { get; set; }
+        public double Cost { get; set; }
+        public double Pnl { get; set; }
     }
 
     public sealed class RollRecord
     {
-        public string Date, Code, From, To;
-        public int Lots;
-        public double Cost;
+        public string Date { get; set; }
+        public string Code { get; set; }
+        public string From { get; set; }
+        public string To { get; set; }
+        public int Lots { get; set; }
+        public double Cost { get; set; }
     }
 
     public sealed class Position
     {
-        public int Lots, Dir;
-        public double EntryAdj, EntryRaw;
-        public string Contract;
+        public int Lots { get; set; }
+        public int Dir { get; set; }
+        public double EntryAdj { get; set; }
+        public double EntryRaw { get; set; }
+        public string Contract { get; set; }
     }
 
     public sealed class Snapshot
     {
-        public string Date;
-        public double Equity, Cash, FloatingPnL, UsedMargin, Available, GrossNotional, Nav;
-        public int NPositions;
+        public string Date { get; set; }
+        public double Equity { get; set; }
+        public double Cash { get; set; }
+        public double FloatingPnL { get; set; }
+        public double UsedMargin { get; set; }
+        public double Available { get; set; }
+        public double GrossNotional { get; set; }
+        public double Nav { get; set; }
+        public int NPositions { get; set; }
     }
 
     public sealed class BacktestSummary
     {
-        public double InitialCapital, FinalEquity, TotalCost, TotalRollCost;
-        public int NTrades, NRolls;
+        public double InitialCapital { get; set; }
+        public double FinalEquity { get; set; }
+        public double TotalCost { get; set; }
+        public double TotalRollCost { get; set; }
+        public int NTrades { get; set; }
+        public int NRolls { get; set; }
     }
 
     public sealed class BacktestResult
     {
-        public List<string> Dates;
-        public double[] Equity;
-        public List<Snapshot> Snapshots;
-        public List<Trade> Trades;
-        public List<RollRecord> Rolls;
-        public BacktestSummary Summary;
+        public List<string> Dates { get; set; }
+        public double[] Equity { get; set; }
+        public List<Snapshot> Snapshots { get; set; }
+        public List<Trade> Trades { get; set; }
+        public List<RollRecord> Rolls { get; set; }
+        public BacktestSummary Summary { get; set; }
     }
 
     public sealed class BacktestEngine

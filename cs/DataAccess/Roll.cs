@@ -5,17 +5,26 @@ namespace MockTrader.Data
 {
     public sealed class RollEvent
     {
-        public string Date, From, To;
-        public double? FromClose, ToClose;
+        public string Date { get; set; }
+        public string From { get; set; }
+        public string To { get; set; }
+        public double? FromClose { get; set; }
+        public double? ToClose { get; set; }
     }
 
     public sealed class ContinuousSeries
     {
-        public List<string> Dates;
-        public Dictionary<string, string> MainCode;
-        public Dictionary<string, string> SubCode;
-        public double?[] MainRaw, MainAdj, SubRaw, SubAdj, MainOi, SubOi, MainVol;
-        public List<RollEvent> Rolls;
+        public List<string> Dates { get; set; }
+        public Dictionary<string, string> MainCode { get; set; }
+        public Dictionary<string, string> SubCode { get; set; }
+        public double?[] MainRaw { get; set; }
+        public double?[] MainAdj { get; set; }
+        public double?[] SubRaw { get; set; }
+        public double?[] SubAdj { get; set; }
+        public double?[] MainOi { get; set; }
+        public double?[] SubOi { get; set; }
+        public double?[] MainVol { get; set; }
+        public List<RollEvent> Rolls { get; set; }
     }
 
     public static class Roll

@@ -5,11 +5,19 @@ namespace MockTrader.Data
 {
     public sealed class Variety
     {
-        public string Code, Name, Sector, Exchange, Unit;
-        public double Mult, Margin, Tick, TickValue;
-        public int[] Months;      // null = 全部 12 个月
-        public string List, Delist; // Delist = null 表示仍上市
-        public double Ref;
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public string Sector { get; set; }
+        public string Exchange { get; set; }
+        public string Unit { get; set; }
+        public double Mult { get; set; }
+        public double Margin { get; set; }
+        public double Tick { get; set; }
+        public double TickValue { get; set; }
+        public int[] Months { get; set; }      // null = 全部 12 个月
+        public string List { get; set; }
+        public string Delist { get; set; } // Delist = null 表示仍上市
+        public double Ref { get; set; }
 
         public bool ActiveAt(string date)
         {
